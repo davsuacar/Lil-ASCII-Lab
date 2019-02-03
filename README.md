@@ -2,9 +2,8 @@
 
 by Alberto H
 
-## About *"Lil' ASCII Lab"*
+## About this project
 
-Description:
 "Lil' ASCII Lab" is a little playground on which single-character beings come to life driven by their AI.
 Currently, agents running around will have simple, hard-coded behaviours. The long-term plan is to integrate Machine Learning-driven agents in.
 
