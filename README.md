@@ -1,6 +1,12 @@
-# Documentation for *Lil' ASCII Lab*
+# *"Lil' ASCII Lab"*
 
 by Alberto H
+
+## About *"Lil' ASCII Lab"*
+
+Description:
+"Lil' ASCII Lab" is a little playground on which single-character beings come to life driven by their AI.
+Currently, agents running around will have simple, hard-coded behaviours. The long-term plan is to integrate Machine Learning-driven agents in.
 
 ## World rules
 
