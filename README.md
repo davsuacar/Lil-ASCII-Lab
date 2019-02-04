@@ -15,11 +15,11 @@ This is a tiled, rectangular world, consisting of:
 * blocks
 * agents
 
-A **tile** is just that, an empty place on which a block or agent can stand.
+A **'tile'** is just that, an empty place on which a block or agent can stand.
 
 A **'block'** is the most basic entity: it just **passively** occupies one tile, never moving and preventing agents from moving on it.
 
-An **'agent'** is a "living" entity. It can occupy a single tile, and perform  specific actions on the world or other agents (but not on blocks). By doing this, it receives **immediate rewards** from the world.
+An **'agent'** is a "living" entity. It can occupy a single tile, and perform specific actions on the world or other agents (but not on blocks). By doing this, it receives **immediate rewards** from the world.
 
 A **'world'** is the setting on which a little universe takes life. This is how it works:
 

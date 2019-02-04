@@ -2,7 +2,6 @@
 
 ## Front
 
-Upload project to Github.
 Explore continuous update on terminal, or...
 Implement window system with continuous refresh.
 
