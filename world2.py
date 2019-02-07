@@ -7,6 +7,7 @@
 
 import numpy as np
 import textcolors as colors
+import os
 
 ###############################################################
 # DEFINITIONS
@@ -20,8 +21,8 @@ World_def = {
     "bg_color":     'reset',    # background color ('reset' for transparent)
     "bg_intensity": 'normal',   # background intensity ('normal' for transparent)
     "n_blocks_rnd": 0.4,        # % of +/- randomness in number of blocks.
-    "max_ticks":    10,         # How long to run the world ('None' for infinite loop).
-    "chk_ticks":    1           # How often to ask user for quit/go-on ('None' = never ask).
+    "max_ticks":    100,         # How long to run the world ('None' for infinite loop).
+    "chk_ticks":    None           # How often to ask user for quit/go-on ('None' = never ask).
 }
 
 # Tiles definition:
@@ -47,6 +48,7 @@ Agents_def = (
 
 # Interesting characters:  ~ … . · ˙ • ° † ∞  ◊ ∆ ¯-_ |-/\  <v^> ∏ 
 # Extended ASCII: 176░ 177▒ 178▓ 219█ 254■
+# https://theasciicode.com.ar/extended-ascii-code/graphic-character-medium-density-dotted-ascii-code-177.html
 
 # Output settings:
 # Define how I/O will happen.
@@ -212,10 +214,22 @@ class World:
             end = self.ticks >= self.max_ticks
         return (end)
 
+    def time_to_ask(self):
+        if self.chk_ticks == None:
+            ask = False
+        else:
+            ask = self.ticks % self.chk_ticks == 0
+        return (ask)
+
     def draw(self):
         spc_len = IO_def["spacing"] # Multiplier for tiles spacing.
         spc_str = " " * spc_len
         extend_block = IO_def["extend_block"]
+
+        # Clear screen and scrollback buffer
+        os.system('clear')
+        os.system("printf '\e[3J'")
+
 
         # Title on top
         title = " " + self.name + " "
