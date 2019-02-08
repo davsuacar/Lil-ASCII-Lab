@@ -6,8 +6,6 @@
 # MODULES
 
 import numpy as np
-import textcolors as colors
-import os
 
 ###############################################################
 # DEFINITIONS
@@ -22,7 +20,7 @@ World_def = {
     "bg_intensity": 'normal',   # background intensity ('normal' for transparent)
     "n_blocks_rnd": 0.4,        # % of +/- randomness in number of blocks.
     "max_ticks":    100,         # How long to run the world ('None' for infinite loop).
-    "chk_ticks":    None           # How often to ask user for quit/go-on ('None' = never ask).
+    "chk_ticks":    20           # How often to ask user for quit/go-on ('None' = never ask).
 }
 
 # Tiles definition:
@@ -38,7 +36,6 @@ Block_def = (
     (None, "block2", "█", "black", "bright", [None, None]),
 )
 
-
 # Agent definition:
 # number of instances, agent type, aspect, color, intensity, initial position (or RND), ai.
 Agents_def = (
@@ -50,13 +47,6 @@ Agents_def = (
 # Extended ASCII: 176░ 177▒ 178▓ 219█ 254■
 # https://theasciicode.com.ar/extended-ascii-code/graphic-character-medium-density-dotted-ascii-code-177.html
 
-# Output settings:
-# Define how I/O will happen.
-IO_def = {
-    "color":        True,   # True for colors, False for B&G.
-    "spacing":      1,      # Number of 'spc' chars to concatenate at the right of every tile.
-    "extend_block": False,   # Whether blocks must be replicated to cover full tile.
-}
 
 ###############################################################
 # CLASSES
@@ -67,7 +57,7 @@ class Thing:
         self.name = name                # Name of the thing
         self.aspect = aspect            # Text character to be printed like
         self.color = color              # Color for the character
-        self.intensity = intensity    # intensity to apply
+        self.intensity = intensity      # intensity to apply
         self.position = position        # Its position in the world
 
 class Tile(Thing):
@@ -221,59 +211,4 @@ class World:
             ask = self.ticks % self.chk_ticks == 0
         return (ask)
 
-    def draw(self):
-        spc_len = IO_def["spacing"] # Multiplier for tiles spacing.
-        spc_str = " " * spc_len
-        extend_block = IO_def["extend_block"]
-
-        # Clear screen and scrollback buffer
-        os.system('clear')
-        os.system("printf '\e[3J'")
-
-
-        # Title on top
-        title = " " + self.name + " "
-        time = " " + str(self.ticks) + " "
-        fill = " " * max(0, ((1+spc_len) * self.width - len(title) - len(time) - spc_len))
-        title = colors.colorize_bg(title, 'white', 'normal', 'blue', 'normal', 'bold')
-        time = colors.colorize_bg(time, 'white', 'normal', 'red')
-        fill = colors.colorize_bg(fill, 'white', 'normal', 'blue')
-        header = title + fill + time
-        print(header)
-
-        # Now the board: loop over rows from top down to bottom
-        if IO_def["color"]:
-            # COLOR version
-            for y in range(self.height - 1, -1, -1):
-                line = ""
-                for x in range (self.width):
-                    thing = self.things[x, y]
-                    if thing == None:
-                        # Empty tile
-                        tile = self.ground[x, y]
-                        line += colors.colorize_bg(tile.aspect + spc_str, \
-                                tile.color, tile.intensity, self.bg_color, self.bg_intensity)
-                    else:
-                        # Some Agent/BLock on it. TBA: customize 'bold' as agent's attrib.
-                        if isinstance(thing, Block) and extend_block:
-                            t_aspect = thing.aspect * (1 + spc_len)
-                        else:
-                            t_aspect = thing.aspect + spc_str
-                        line += colors.colorize_bg(t_aspect, \
-                                thing.color, thing.intensity, self.bg_color, self.bg_intensity, 'bold')
-                print(line)
-
-        else:
-            # MONOCHROME version
-            for y in range(self.height - 1, -1, -1):
-                line = ""
-                for x in range (self.width):
-                    thing = self.things[x, y]
-                    if thing == None:
-                        # Empty tile
-                        line += self.ground[x, y].aspect + spc_str
-                    else:
-                        # Some Agent/Block on it
-                        line += thing.aspect + spc_str
-                print(line)
 
