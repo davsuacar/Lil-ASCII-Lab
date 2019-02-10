@@ -10,96 +10,98 @@ import textcolors as colors
 # Define how I/O will happen
 IO_def = {
     "resize_term":  False,   # Flag to resize the actual terminal where program runs
-    "use_curses":   False,  # Flag to use curses lib or plain text on the terminal
-    "color":        True,   # True for colors, False for B&G
+    "color":        True,   # True for colors, False for B&G. TBA: Check if necessary??
     "spacing":      1,      # Number of 'spc' chars to concatenate at the right of every tile
     "extend_block": False,  # Whether blocks must be replicated to avoid interstices
 }
 
-def initialize_ui(world, clear = True):
-    if IO_def["resize_term"]:
-        # Firstly, resize and clean the terminal to fit the world
-        height = world.height + 2   # title + screen + message ticker
-        width = world.width * 2     # doubling columns for esthetic reasons
-        resize_terminal(height, width)
+class UI:
+    def __init__(self, stdscr, world):
+        # Register curses screen and world to represent. Initialize attributes.
+        self.stdscr = stdscr
+        self.world = world
 
-    # If requested, clear screen and scrollback buffer
-    if clear: clear_terminal()
+        # Check IO settings
+        self.resize_term = IO_def["resize_term"]
+        self.spc_len = IO_def["spacing"] # Multiplier for tiles spacing
+        self.spc_str = " " * self.spc_len     # doubling columns for esthetic reasons
+        self.extend_block = IO_def["extend_block"]
 
-def resize_terminal(rows, columns):
-    # Xterm Control Sequences through “CSI” (“Control Sequence Introducer”)
-    # Resize terminal
-    os.system("printf '\e[8;{};{}t'".format(rows, columns))
+        # Layout dimensions
+        self.height = 1 + self.world.height + 1   # header + board + footer
+        self.width = self.world.width * (1 + self.spc_len) # 
 
-def clear_terminal():
-    if (IO_def["use_curses"]):
-        # curses initialization
-        print("not implemented.")
-        exit(1)
-    else:
-        # Clear terminal and scrollback buffer
+        # Resize?
+        if self.resize_term: self.resize_terminal(self.height, self.width)
+        
+        # Initialize curses settings
+        self.stdscr.nodelay(False)   # Enable waiting for user input stop
+
+        # Create curses windows (extending width 1 extra character for safe addstr()...)
+        self.header = curses.newwin(1, self.width + 1, 0, 0)
+        self.board = curses.newwin(self.world.height, self.width + 1, 1, 0)
+        self.footer = curses.newwin(1, self.width + 1, self.world.height + 1, 0)
+
+    def resize_terminal(self, rows, columns):
         # Xterm Control Sequences through “CSI” (“Control Sequence Introducer”)
-        os.system('clear')
-        os.system("printf '\e[3J'")
+        # Resize terminal
+        os.system("printf '\e[8;{};{}t'".format(rows, columns))
 
-def draw(world):
-    # Check settings first
-    spc_len = IO_def["spacing"] # Multiplier for tiles spacing
-    spc_str = " " * spc_len
-    extend_block = IO_def["extend_block"]
+    def say(self, text):
+        # Display a certain text at the footer
+        text = text[:self.world.width - 1]   # Truncate excess of text
+        self.footer.clear()
+        self.footer.addnstr(0, 0, text, self.footer.getmaxyx()[1] - 1)
+        #getmaxyx
+        self.footer.refresh()
+        _ = self.stdscr.getkey()
 
-    if (IO_def["use_curses"]):
-        # Draw the world using curses lib
-        print("not implemented.")
-        exit(1)
-    else:
-        # Draw the world using plain text on terminal
+    def ask(self, question):
+        # Ask user for input on footer zone
+        self.footer.clear()
+        self.footer.addnstr(0, 0, question, self.footer.getmaxyx()[1] - 1)
+        self.footer.refresh()
+        answer = self.footer.getkey()
+        return answer
 
-        # Clear screen and scrollback buffer
-        clear_terminal()
+    def draw(self):
+        # Generate and display a full refresh of the world state using curses lib
 
-        # Title on top
-        title = " " + world.name + " "
-        time = " " + str(world.ticks) + " "
-        fill = " " * max(0, ((1+spc_len) * world.width - len(title) - len(time) - spc_len))
-        title = colors.colorize_bg(title, 'white', 'normal', 'blue', 'normal', 'no-bold')
-        time = colors.colorize_bg(time, 'white', 'normal', 'red')
-        fill = colors.colorize_bg(fill, 'white', 'normal', 'blue')
-        header = title + fill + time
-        print(header)
+        # Clear screen first
+        self.stdscr.clear()
 
-        # Now the board: loop over rows from top down to bottom
-        if IO_def["color"]:
-            # COLOR version
-            for y in range(world.height - 1, -1, -1):
-                line = ""
-                for x in range (world.width):
-                    thing = world.things[x, y]
-                    if thing == None:
-                        # Empty tile
-                        tile = world.ground[x, y]
-                        line += colors.colorize_bg(tile.aspect + spc_str, \
-                                tile.color, tile.intensity, world.bg_color, world.bg_intensity)
+        # HEADER: Title on top
+        title = " " + self.world.name + " "
+        time = " " + str(self.world.ticks) + " "
+        fill = " " * max(0, ((1+self.spc_len) * self.world.width - len(title) - len(time) - self.spc_len))
+        text = title + fill + time
+        self.header.addnstr(0, 0, text, self.header.getmaxyx()[1] - 1)
+        self.header.noutrefresh()
+
+        # BOARD: Update world representation
+        for y in range(self.world.height -1, -1, -1):
+            line =""
+            for x in range(self.world.width):
+                thing = self.world.things[x, y]
+                if thing == None:
+                    # Empty tile here
+                    tile = self.world.ground[x, y]
+                    line += tile.aspect + self.spc_str
+                else:
+                    # Some Agent/Block here
+                    if (thing in self.world.blocks and self.extend_block):
+                        t_aspect = thing.aspect * (1 + self.spc_len) # Blocks may be doubled
                     else:
-                        # Some Agent/BLock on it. TBA: customize 'bold' as agent's attrib
-                        if (thing in world.blocks and extend_block):
-                            t_aspect = thing.aspect * (1 + spc_len) # Blocks may be doubled
-                        else:
-                            t_aspect = thing.aspect + spc_str       # Agents
-                        line += colors.colorize_bg(t_aspect, \
-                                thing.color, thing.intensity, world.bg_color, world.bg_intensity, 'bold')
-                print(line)
+                        t_aspect = thing.aspect + self.spc_str        # an Agent
+                    line += t_aspect
 
-        else:
-            # MONOCHROME version
-            for y in range(world.height - 1, -1, -1):
-                line = ""
-                for x in range (world.width):
-                    thing = world.things[x, y]
-                    if thing == None:
-                        # Empty tile
-                        line += world.ground[x, y].aspect + spc_str
-                    else:
-                        # Some Agent/Block on it
-                        line += thing.aspect + spc_str
-                print(line)
+            self.board.addnstr(self.world.height - y - 1, 0, line, self.board.getmaxyx()[1] - 1)
+        self.board.noutrefresh()
+
+        # FOOTER: N/A for now
+        text = "(footer placeholder)"
+        self.footer.addnstr(0, 0, text, self.footer.getmaxyx()[1] - 1)
+        self.footer.noutrefresh()
+
+        # Refresh screen
+        curses.doupdate()

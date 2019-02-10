@@ -14,13 +14,13 @@ import numpy as np
 #
 World_def = {
     "name":         "Lil' ASCII Lab",
-    "width":        15,         # x from 0 to WIDTH -1
+    "width":        10,         # x from 0 to WIDTH -1
     "height":       10,         # y from 0 to HEIGHT -1
     "bg_color":     'reset',    # background color ('reset' for transparent)
     "bg_intensity": 'normal',   # background intensity ('normal' for transparent)
     "n_blocks_rnd": 0.4,        # % of +/- randomness in number of blocks.
     "max_ticks":    100,         # How long to run the world ('None' for infinite loop).
-    "chk_ticks":    20           # How often to ask user for quit/go-on ('None' = never ask).
+    "chk_ticks":    10           # How often to ask user for quit/go-on ('None' = never ask).
 }
 
 # Tiles definition:
@@ -39,7 +39,7 @@ Block_def = (
 # Agent definition:
 # number of instances, agent type, aspect, color, intensity, initial position (or RND), ai.
 Agents_def = (
-    (1, "Omi", "𝝮", "green", "normal", [None, None], None),
+    (1, "Omi", "𝝮", "green", "normal", [0, 0], None),
     (3, "apple", "", "red", "bright", [None, None], None),
 )
 
