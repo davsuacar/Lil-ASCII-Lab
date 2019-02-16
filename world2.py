@@ -6,6 +6,7 @@
 # MODULES
 
 import numpy as np
+import ui
 
 ###############################################################
 # DEFINITIONS
@@ -14,33 +15,33 @@ import numpy as np
 #
 World_def = {
     "name":         "Lil' ASCII Lab",
-    "width":        10,         # x from 0 to WIDTH -1
-    "height":       10,         # y from 0 to HEIGHT -1
-    "bg_color":     'reset',    # background color ('reset' for transparent)
-    "bg_intensity": 'normal',   # background intensity ('normal' for transparent)
-    "n_blocks_rnd": 0.4,        # % of +/- randomness in number of blocks.
-    "max_ticks":    100,         # How long to run the world ('None' for infinite loop).
-    "chk_ticks":    10           # How often to ask user for quit/go-on ('None' = never ask).
+    "width":        10,                 # x from 0 to WIDTH -1
+    "height":       6,                  # y from 0 to HEIGHT -1
+    "bg_color":     ui.BLACK,           # background color (-1 for transparent in curses)
+    "bg_intensity": ui.NORMAL,          # background intensity (NORMAL or BRIGHT)
+    "n_blocks_rnd": 0.4,                # % of +/- randomness in number of blocks.
+    "max_ticks":    100,                # How long to run the world ('None' for infinite loop).
+    "chk_ticks":    10                  # How often to ask user for quit/go-on ('None' = never ask).
 }
 
 # Tiles definition:
 # type of tile, aspect, color, intensity, position (not specified here)
 Tile_def = (
-    ("tile", ".", "black", "bright", [None, None])
+    ("tile", ".", ui.BLACK, ui.BRIGHT, [None, None])
 )
 
 # Block definition: 
 # number of instances (or RND), block type, aspect, color, intensity, position (not specified here).
 Block_def = (
-    (4, "plant", "*", "yellow", "normal", [None, None]),
-    (None, "block2", "█", "black", "bright", [None, None]),
+    (4, "plant", "*", ui.BLUE, ui.BRIGHT, [None, None]),
+    (None, "block", "█", ui.BLACK, ui.BRIGHT, [None, None]),
 )
 
 # Agent definition:
 # number of instances, agent type, aspect, color, intensity, initial position (or RND), ai.
 Agents_def = (
-    (1, "Omi", "𝝮", "green", "normal", [0, 0], None),
-    (3, "apple", "", "red", "bright", [None, None], None),
+    (1, "Omi", "𝝮", ui.GREEN, ui.BRIGHT, [0, 0], None),
+    (3, "apple", "", ui.RED, ui.BRIGHT, [None, None], None),
 )
 
 # Interesting characters:  ~ … . · ˙ • ° † ∞  ◊ ∆ ¯-_ |-/\  <v^> ∏ 

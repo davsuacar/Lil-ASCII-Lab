@@ -27,7 +27,7 @@ def main_loop(stdscr, world):
         if not end_loop:
             # Check user if required
             if (world.time_to_ask()):
-                user_input = u_i.ask("Keep going (y/n)? ")
+                user_input = u_i.ask("Continue? (y/n) ")
                 end_loop = (user_input.lower() != "y")
             # Evolve world by one tick
             world.tick()
