@@ -53,7 +53,8 @@ class UI:
         if self.resize_term: self.resize_terminal(self.height, self.width)
         
         # Initialize curses settings
-        self.stdscr.nodelay(False)   # Enable waiting for user input stop
+        self.stdscr.nodelay(False)  # Enable waiting for user input stop
+        curses.curs_set(2)          # Set cursor as 'very' visible
 
         # COLORS: check availability and initialize curses' pairs
         self.has_colors, self.color_pairs = self.init_all_pairs()
@@ -63,9 +64,10 @@ class UI:
         self.header = curses.newwin(1,                  self.width + N, 0, 0)
         self.board = curses.newwin(self.world.height,   self.width + N, 1, 0)
         self.footer = curses.newwin(1,                  self.width + N, self.world.height + 1, 0)
+        self.footer.keypad(True) # footer will handle keyboard input, so enabling cursor keys or navigation keys
 
         # Fill in the background of all windows with black
-        pair = self.pair(BLACK, self.world.bg_color)
+        pair = self.pair(BLACK, BLACK)
 
         stdscr.bkgd(" ", pair)
         self.header.bkgd(" ", pair)
@@ -118,14 +120,15 @@ class UI:
         # Print some text on footer area
         self.footer.clear()
         pair = self.pair(BLACK, WHITE)
-        self.footer.addnstr(0, 0, text, self.footer.getmaxyx()[1] - 1, pair | curses.A_BOLD)
+        self.footer.addnstr(0, 0, text, self.footer.getmaxyx()[1] - 1, pair)
         self.footer.refresh()
 
     def ask(self, question):
         # Ask user for input on footer zone
         self.footer.clear()
         pair = self.pair(BLACK, WHITE)
-        self.footer.addnstr(0, 0, question, self.footer.getmaxyx()[1] - 1, pair | curses.A_BOLD)
+        #self.footer.addstr(0, 0, " "*self.width, pair)
+        self.footer.addnstr(0, 0, question.ljust(self.width), self.footer.getmaxyx()[1] - 1, pair)
         self.footer.refresh()
         answer = self.footer.getkey()
         return answer
@@ -142,9 +145,9 @@ class UI:
         fill = " " * max(0, self.width - len(title) - len(time))
         
         text = title + fill
-        pair = self.pair(WHITE, BLUE)
+        pair = self.pair(WHITE, BLUE + BRIGHT)
         self.header.addnstr(0, 0, text, self.width - len(time), pair | curses.A_BOLD)
-        pair = self.pair(WHITE, RED)
+        pair = self.pair(WHITE, RED + BRIGHT)
         self.header.addstr(time, pair | curses.A_NORMAL)
         self.header.noutrefresh()
 
@@ -154,20 +157,20 @@ class UI:
             for x in range(self.world.width):
                 thing = self.world.things[x, y]
                 if thing == None:
-                    # Emtpy tile here
+                    # Emtpy TILE here
                     tile = self.world.ground[x, y]
                     text = tile.aspect + self.spc_str
                     pair = self.pair(tile.color + tile.intensity, self.world.bg_color + self.world.bg_intensity)
                     self.board.addstr(self.world.height - y - 1, x_screen, text, pair)
                 else:
-                    # Some Agent/Block here
-                    if thing in self.world.blocks and self.extend_block:                       
-                        pair = self.pair(thing.color + thing.intensity, self.world.bg_color + self.world.bg_intensity)
+                    # Some AGENT/BLOCK here
+                    if thing in self.world.blocks:                       
+                        pair = self.pair(thing.color + thing.intensity, thing.color + thing.intensity)
                         t_aspect = thing.aspect * (1 + self.spc_len) # Blocks may be doubled
                     else:
                         pair = self.pair(thing.color + thing.intensity, self.world.bg_color + self.world.bg_intensity)
                         t_aspect = thing.aspect + self.spc_str       # An Agent
-                    self.board.addstr(self.world.height - y - 1, x_screen, t_aspect, pair)
+                    self.board.addstr(self.world.height - y - 1, x_screen, t_aspect, pair | curses.A_BOLD)
                 x_screen += 1 + self.spc_len
         self.board.noutrefresh()
 

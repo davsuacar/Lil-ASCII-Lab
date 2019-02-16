@@ -3,19 +3,11 @@
 ## Interface
 
 HI:
-Issue: invisible blocks/tiles -> Guarantee colors are visible in different terminals (setting them up?)
-    can_change_color()
-    COLORS -> # of colors
-    COLOR_PAIRS -> # of pairs
-    color_content(color_number) -> r, g, b
-    init_color(color_number, r, g, b)
-
 Issue: Dettached blocks -> Check blocks based on spaces " " for full coverage?
 Add tracking of 1 specific agent (energy, AI, etc.)
 Integrate Unicode characters? (e.g. for blocks).
 
 LO:
-Set fg/bg as white on black if term supports it.
 Fix issue with width of footer (looks shorter on the right...) [Use hline()?]
 Handle resize terminal without exiting.
 Implement basic animation for "aspect" (2 or 3 looping chars).

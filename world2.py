@@ -27,13 +27,13 @@ World_def = {
 # Tiles definition:
 # type of tile, aspect, color, intensity, position (not specified here)
 Tile_def = (
-    ("tile", ".", ui.BLACK, ui.BRIGHT, [None, None])
+    ("tile", "…", ui.BLACK, ui.BRIGHT, [None, None])
 )
 
 # Block definition: 
 # number of instances (or RND), block type, aspect, color, intensity, position (not specified here).
 Block_def = (
-    (4, "plant", "*", ui.BLUE, ui.BRIGHT, [None, None]),
+    (4, "plant", " ", ui.BLUE, ui.NORMAL, [None, None]),
     (None, "block", "█", ui.BLACK, ui.BRIGHT, [None, None]),
 )
 
@@ -42,6 +42,7 @@ Block_def = (
 Agents_def = (
     (1, "Omi", "𝝮", ui.GREEN, ui.BRIGHT, [0, 0], None),
     (3, "apple", "", ui.RED, ui.BRIGHT, [None, None], None),
+    (3, "star", "*", ui.YELLOW, ui.BRIGHT, [None, None], None),
 )
 
 # Interesting characters:  ~ … . · ˙ • ° † ∞  ◊ ∆ ¯-_ |-/\  <v^> ∏ 
