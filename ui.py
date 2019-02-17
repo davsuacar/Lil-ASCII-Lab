@@ -11,12 +11,11 @@ import textcolors as colors
 # Define how I/O will happen
 IO_def = {
     "resize_term":  False,  # Flag to resize the actual terminal where program runs
-    "spacing":      1,      # Number of 'spc' chars to concatenate at the right of every tile
-    "extend_block": False,  # Whether blocks must be replicated to avoid interstices
+    "spacing":      1,      # Number of 'spc' chars to concatenate at the right of every tile (for an even vert/horiz aspect ratio)
+    "extend_block": False,  # Whether blocks must be replicated to avoid interstices (TBA: is this needed?)
     "min_width":    20,     # Minimum width for the text interface, regardless of board size
     "max_size":     100,    # Maximum size for width of height for the world
 }
-# initc=\E]4;%p1%d;rgb\:%p2%{255}%*%{1000}%/%2.2X/%p3%{255}%*%{1000}%/%2.2X/%p4%{255}%*%{1000}%/%2.2X\E\\,
 
 # Constants based on curses' 8 basic colors
 BLACK   = curses.COLOR_BLACK
@@ -27,6 +26,9 @@ MAGENTA = curses.COLOR_MAGENTA
 RED     = curses.COLOR_RED
 WHITE   = curses.COLOR_WHITE
 YELLOW  = curses.COLOR_YELLOW
+
+colors = (BLACK, BLUE, CYAN, GREEN, MAGENTA, RED, WHITE, YELLOW)
+color_names = ("BLACK", "BLUE", "CYAN", "GREEN", "MAGENTA", "RED", "WHITE", "YELLOW")
 
 NORMAL  = 0                 # No offset for normal colors (1..8)
 BRIGHT  = 8                 # Offset to get brighter colors assuming COLORS >= 16
@@ -92,7 +94,7 @@ class UI:
                         color_pairs[fg, bg] = pair
                         pair += 1
                     else:
-                        # Restrict to 8x8 pair combinations within the 16x16 shape.
+                        # Restrict to 8x8 pair combinations within the 16x16 shape
                         if (fg <= 8 and bg <= 8):
                             # Allocate new basic pair
                             curses.init_pair(pair, fg, bg)
@@ -127,8 +129,7 @@ class UI:
         # Ask user for input on footer zone
         self.footer.clear()
         pair = self.pair(BLACK, WHITE)
-        #self.footer.addstr(0, 0, " "*self.width, pair)
-        self.footer.addnstr(0, 0, question.ljust(self.width), self.footer.getmaxyx()[1] - 1, pair)
+        self.footer.addnstr(0, 0, question.ljust(self.width - 1), self.footer.getmaxyx()[1] - 1, pair)
         self.footer.refresh()
         answer = self.footer.getkey()
         return answer
@@ -161,17 +162,27 @@ class UI:
                     tile = self.world.ground[x, y]
                     text = tile.aspect + self.spc_str
                     pair = self.pair(tile.color + tile.intensity, self.world.bg_color + self.world.bg_intensity)
-                    self.board.addstr(self.world.height - y - 1, x_screen, text, pair)
+                    self.board.addstr(self.world.height - y - 1, x_screen, text, pair | curses.A_NORMAL)
                 else:
                     # Some AGENT/BLOCK here
-                    if thing in self.world.blocks:                       
-                        pair = self.pair(thing.color + thing.intensity, thing.color + thing.intensity)
-                        t_aspect = thing.aspect * (1 + self.spc_len) # Blocks may be doubled
+                    if thing in self.world.blocks:
+                        # A BLOCK
+                        if thing.aspect == " ": # Generic full block style
+                            pair = self.pair(thing.color + thing.intensity, thing.color + thing.intensity)
+                            t_aspect = " " * (1 + self.spc_len) # Blocks may be doubled
+                        else:                   # Specific block style
+                            pair = self.pair(thing.color + thing.intensity, self.world.bg_color + self.world.bg_intensity)
+                            if len(thing.aspect) == 1:
+                                t_aspect = thing.aspect * (1 + self.spc_len) # Blocks may be doubled
+                            else:
+                                t_aspect = thing.aspect[:self.spc_len + 1] # Use only the first characters
                     else:
+                        # An AGENT
                         pair = self.pair(thing.color + thing.intensity, self.world.bg_color + self.world.bg_intensity)
-                        t_aspect = thing.aspect + self.spc_str       # An Agent
+                        t_aspect = thing.aspect + self.spc_str
+                    # Display the agent/block
                     self.board.addstr(self.world.height - y - 1, x_screen, t_aspect, pair | curses.A_BOLD)
-                x_screen += 1 + self.spc_len
+                x_screen += 1 + self.spc_len # X must follow specific spacing
         self.board.noutrefresh()
 
         # FOOTER: N/A for now
@@ -183,41 +194,59 @@ class UI:
 # MAIN: code for testing purposes only
 
 def main(scr):
-    """
-    init_color(color_number, r, g, b)
-    """
-    curses.use_default_colors() # Set default values for colors (including transparency color number -1).
-    scr.clear()
+    scr.scrollok(True)
 
-    curses.init_pair(1, WHITE, BLACK)
+    # Call as main module generates a series of tests on the terminal.
+    if not curses.has_colors():
+        # Print basic b&w message
+        scr.clear()
+        scr.addstr(0,0, "This is a B&W terminal. Press to exit...", 0)
+        scr.refresh()
+        _ = scr.getkey()
+    else:
+        # Go for the colors
+        curses.use_default_colors()     # Set default values for colors (including transparency color number -1).
+        c_colors = curses.COLORS        # The full capacity
+        n_colors = min(16, c_colors)    # Demo is limited to 16 colors
+        color_pairs = np.full((n_colors, n_colors), 0)
 
-    scr.addstr(0, 0, "Testing ncurses, pair 1: ", 1)
-    scr.addstr(1, 0, "COLORS: " + str(curses.COLORS) + ", PAIRS: " + str(curses.COLOR_PAIRS), 1)
-    scr.addstr(2, 0, "can_change_color(): " + str(curses.can_change_color()), 1)
+        # Start reporting
+        scr.addstr(0, 0, "This terminal can use {} colors. See some combinations:".format(c_colors), 0)
 
-    r, g, b = curses.color_content(BLACK + BRIGHT)
-    scr.addstr(3, 0, "{} BLACK = {}, {}, {}".format(BLACK, r, g, b), 1)
-    r, g, b = curses.color_content(WHITE + BRIGHT)
-    scr.addstr(4, 0, "{} WHITE = {}, {}, {}".format(WHITE, r, g, b), 1)
-    r, g, b = curses.color_content(BLUE + BRIGHT)
-    scr.addstr(5, 0, "{} BLUE = {}, {}, {}".format(BLUE, r, g, b), 1)
-    r, g, b = curses.color_content(CYAN + BRIGHT)
-    scr.addstr(6, 0, "{} CYAN = {}, {}, {}".format(CYAN, r, g, b), 1)
-    r, g, b = curses.color_content(GREEN + BRIGHT)
-    scr.addstr(7, 0, "{} GREEN = {}, {}, {}".format(GREEN, r, g, b), 1)
-    r, g, b = curses.color_content(MAGENTA + BRIGHT)
-    scr.addstr(8, 0, "{} MAGENTA = {}, {}, {}".format(MAGENTA, r, g, b), 1)
-    r, g, b = curses.color_content(RED + BRIGHT)
-    scr.addstr(9, 0, "{} RED = {}, {}, {}".format(RED, r, g, b), 1)
-    r, g, b = curses.color_content(YELLOW + BRIGHT)
-    scr.addstr(10, 0, "{} YELLOW = {}, {}, {}".format(YELLOW, r, g, b), 1)
+        # Loop over possible pairs
+        scr.clear()
 
-    scr.refresh()
-    _ = scr.getkey()
+        pair = 1
+        n_pairs = 0
+        for fg in range(n_colors): # Loop over FG colors
+            for bg in range(n_colors): # Loop over BG colors
+                if c_colors >= 16:
+                    curses.init_pair(pair, fg, bg)
+                    color_pairs[fg, bg] = pair
+                    pair += 1
+                else:
+                    if fg <= 8 and bg <= 8:
+                        curses.init_pair(pair, fg, bg)
+                        color_pairs[fg, bg] = pair
+                        pair += 1
+                    else:
+                        color_pairs[fg, bg] = color_pair[max(fg, fg - 8), max(bg, bg - 8)]
+                n_pairs += 1
 
+        # Demo some combinations
+        max_y, _ = scr.getmaxyx()
+        for y in range(1, max_y -1):
+            pair = np.random.randint(1, n_pairs)
+            scr.addstr(y, 0, "TESTING COLORS", curses.color_pair(pair))
+            y += 1
+        
+        # Final message
+        scr.addstr(y, 0, "Press to exit...{}".format(n_pairs), 0)
+        scr.refresh()
+        _ = scr.getkey()
 
 if __name__ == '__main__':
-    # Call main module
+    # Call as main module generates a series of tests on the terminal.
     print("Tests with ncurses...")
     wrapper(main)
 

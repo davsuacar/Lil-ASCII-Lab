@@ -3,20 +3,23 @@
 # and its entities...
 
 ###############################################################
-# MODULES
+#   MODULES
 
 import numpy as np
 import ui
 
 ###############################################################
-# DEFINITIONS
+#   DEFINITIONS
+#   color:  from among 8 options (BLACK, BLUE, CYAN, GREEN, MAGENTA, RED, WHITE, YELLOW)
+#   intensity: NORMAL or BRIGHT
+
 
 # World definition:
 #
 World_def = {
     "name":         "Lil' ASCII Lab",
-    "width":        10,                 # x from 0 to WIDTH -1
-    "height":       6,                  # y from 0 to HEIGHT -1
+    "width":        12,                 # x from 0 to width - 1
+    "height":       8,                  # y from 0 to height - 1
     "bg_color":     ui.BLACK,           # background color (-1 for transparent in curses)
     "bg_intensity": ui.NORMAL,          # background intensity (NORMAL or BRIGHT)
     "n_blocks_rnd": 0.4,                # % of +/- randomness in number of blocks.
@@ -31,24 +34,40 @@ Tile_def = (
 )
 
 # Block definition: 
-# number of instances (or RND), block type, aspect, color, intensity, position (not specified here).
+#   number of instances (or None for RND, based on world's width and % of randomness)
+#   type, i.e. its name
+#   aspect: " " for a generic full block (which will be doubled to fit world's spacing)
+#               ONE single character, e.g. "#" (which will be doubled to fit world's spacing)
+#               TWO characters for specific styles (e.g. "[]")
+#   color & intensity:  (see above)
+#   position:   (a tuple, currently ignored)
 Block_def = (
-    (4, "plant", " ", ui.BLUE, ui.NORMAL, [None, None]),
-    (None, "block", "█", ui.BLACK, ui.BRIGHT, [None, None]),
+    (8, "water", " ", ui.BLUE, ui.NORMAL, [None, None]),
+    (2, "block", "▛▜", ui.GREEN, ui.BRIGHT, [None, None]),
+    (None, "fence", "#", ui.BLACK, ui.BRIGHT, [None, None]),
 )
 
 # Agent definition:
-# number of instances, agent type, aspect, color, intensity, initial position (or RND), ai.
+#   number of instances
+#   type, i.e. its name
+#   aspect: one single character
+#   color & intensity:  (see above)
+#   initial position (or RND). If more than one instance, it will be ignored.
+#   ai (currently ignored)
 Agents_def = (
     (1, "Omi", "𝝮", ui.GREEN, ui.BRIGHT, [0, 0], None),
     (3, "apple", "", ui.RED, ui.BRIGHT, [None, None], None),
     (3, "star", "*", ui.YELLOW, ui.BRIGHT, [None, None], None),
 )
 
-# Interesting characters:  ~ … . · ˙ • ° † ∞  ◊ ∆ ¯-_ |-/\  <v^> ∏ 
-# Extended ASCII: 176░ 177▒ 178▓ 219█ 254■
+# Extended ASCII (e.g.: ░ ▒ ▓ █ ■ ▀ ▄ █ ▚
+# Full list here:
 # https://theasciicode.com.ar/extended-ascii-code/graphic-character-medium-density-dotted-ascii-code-177.html
-
+# 
+# Interesting Unicode characters:
+# https://en.wikipedia.org/wiki/List_of_Unicode_characters#Latin_script
+# ~ ≈ ≋ ⊙ Θ Ͼ Ͽ ͼͽ … „ . · ˙ • ° † ∞  ⎔ ◊ ∆ ¯-_ |-/\  <v^> ∏ ∐ ¤ ⁕ (⏜⏝)
+# 𝝮 Ϙ Д ⌆ ♀ ⍾ ⏕ ▲ ▶ ▼ ◀   ◢ ◣ ◤ ◥   ♠ ♣ ♥ ♦  	✖ ✔ ✱  ❨❩ () ▙ ▟ ▚ ▞ ▛ ▜  
 
 ###############################################################
 # CLASSES
@@ -106,7 +125,7 @@ class World:
         self.ticks = 0
         self.things = np.full((self.width, self.height), None) # create grid for agents and blocks
 
-        # put tiles on the ground
+        # put TILES on the ground
         self.ground = np.full((self.width, self.height), None) # fill in the basis of the world.
         for x in range(self.width):
             for y in range(self.height):
@@ -114,7 +133,7 @@ class World:
                 tile = Tile(t_def[0], t_def[1], t_def[2], t_def[3], [x, y])
                 self.ground[x, y] = tile           
 
-        # put agents in the world
+        # put AGENTS in the world
         self.agents = []                # list of all types of agent in the world
         for a in a_def:                 # loop over the types of agent defined
             for i in range(a[0]):       # create the # of instances specified
@@ -124,10 +143,10 @@ class World:
                 res = self.move(agent, agent.position[0], agent.position[1], relocate=True)
                 self.agents.append(agent)
 
-        # put some blocks in, # based on width
+        # put some BLOCKS in, # based on width
         self.blocks = []
         for b in b_def:                 # list of all types of block in the world.
-            if(b[0] == None):           # Unspecified # of blocks.
+            if(b[0] == None):           # Unspecified number of blocks.
                 n_random_blocks = (self.width * self.n_blocks_rnd) // 1 # abs. max variation
                 n_random_blocks = self.width + np.random.randint(-n_random_blocks, n_random_blocks+1)
             else:                       # Specified # of blocks.

@@ -75,3 +75,21 @@ draw final state of the world
 
 * Life (when 0, dead comes!)
 * Reward (accumulated)
+
+# References
+
+## ncurses
+
+"Curses programming with Python"
+<https://docs.python.org/3/howto/curses.html>
+
+"curses — Terminal handling for character-cell displays"
+<https://docs.python.org/3/library/curses.html#curses.pair_number>
+
+## Unicode characters
+
+List of Unicode characters
+<https://en.wikipedia.org/wiki/List_of_Unicode_characters>
+
+Graphic character, medium density dotted
+<https://theasciicode.com.ar/extended-ascii-code/graphic-character-medium-density-dotted-ascii-code-177.html>
