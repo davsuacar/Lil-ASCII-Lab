@@ -82,12 +82,12 @@ class UI:
         curses.use_default_colors() # Set default values for colors (including transparency color number -1).
         has_colors = curses.has_colors()    # Boolean: whether the terminal can display colors
 
-        color_pairs = np.full((MAX_COLORS, MAX_COLORS + 1), 0)
+        color_pairs = np.full((MAX_COLORS, MAX_COLORS), 0)
         if has_colors:
             pair = 1 # Skip pair 0 ("wired" to white on black)
             # Terminal has colors: initialize pairs for curses
-            for fg in range(MAX_COLORS):         # colors ranging from 0 to 7
-                for bg in range(-1, MAX_COLORS):    # colors ranging from -1 to 7
+            for fg in range(MAX_COLORS):         # colors ranging from 0 to 15
+                for bg in range(MAX_COLORS):    # colors ranging from 0 to 15
                     if curses.COLORS >= 16:
                         # Full allocation of all 16x16 pair combinations
                         curses.init_pair(pair, fg, bg)
@@ -122,7 +122,7 @@ class UI:
         # Print some text on footer area
         self.footer.clear()
         pair = self.pair(BLACK, WHITE)
-        self.footer.addnstr(0, 0, text, self.footer.getmaxyx()[1] - 1, pair)
+        self.footer.addnstr(0, 0, text.ljust(self.width - 1), self.footer.getmaxyx()[1] - 1, pair)
         self.footer.refresh()
 
     def ask(self, question):
@@ -146,7 +146,7 @@ class UI:
         fill = " " * max(0, self.width - len(title) - len(time))
         
         text = title + fill
-        pair = self.pair(WHITE, BLUE + BRIGHT)
+        pair = self.pair(WHITE, BLUE + NORMAL)
         self.header.addnstr(0, 0, text, self.width - len(time), pair | curses.A_BOLD)
         pair = self.pair(WHITE, RED + BRIGHT)
         self.header.addstr(time, pair | curses.A_NORMAL)
@@ -186,7 +186,7 @@ class UI:
         self.board.noutrefresh()
 
         # FOOTER: N/A for now
-        self.say("(placeholder)")
+        self.say("(running...)")
 
         # Refresh screen
         curses.doupdate()

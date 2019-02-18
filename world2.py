@@ -20,17 +20,18 @@ World_def = {
     "name":         "Lil' ASCII Lab",
     "width":        12,                 # x from 0 to width - 1
     "height":       8,                  # y from 0 to height - 1
-    "bg_color":     ui.BLACK,           # background color (-1 for transparent in curses)
+    "bg_color":     ui.GREEN,           # background color
     "bg_intensity": ui.NORMAL,          # background intensity (NORMAL or BRIGHT)
     "n_blocks_rnd": 0.4,                # % of +/- randomness in number of blocks.
     "max_ticks":    100,                # How long to run the world ('None' for infinite loop).
-    "chk_ticks":    10                  # How often to ask user for quit/go-on ('None' = never ask).
+    "chk_ticks":    10,               # How often to ask user for quit/go-on ('None' = never ask).
+    "fps":          12
 }
 
 # Tiles definition:
 # type of tile, aspect, color, intensity, position (not specified here)
 Tile_def = (
-    ("tile", "…", ui.BLACK, ui.BRIGHT, [None, None])
+    ("tile", "…", ui.GREEN, ui.BRIGHT, [None, None])
 )
 
 # Block definition: 
@@ -42,8 +43,8 @@ Tile_def = (
 #   color & intensity:  (see above)
 #   position:   (a tuple, currently ignored)
 Block_def = (
-    (8, "water", " ", ui.BLUE, ui.NORMAL, [None, None]),
-    (2, "block", "▛▜", ui.GREEN, ui.BRIGHT, [None, None]),
+    (8, "water", " ", ui.BLUE, ui.BRIGHT, [None, None]),
+    (2, "block", "▛▜", ui.MAGENTA, ui.NORMAL, [None, None]),
     (None, "fence", "#", ui.BLACK, ui.BRIGHT, [None, None]),
 )
 
@@ -55,7 +56,7 @@ Block_def = (
 #   initial position (or RND). If more than one instance, it will be ignored.
 #   ai (currently ignored)
 Agents_def = (
-    (1, "Omi", "𝝮", ui.GREEN, ui.BRIGHT, [0, 0], None),
+    (1, "Omi", "𝝮", ui.YELLOW, ui.BRIGHT, [0, 0], None),
     (3, "apple", "", ui.RED, ui.BRIGHT, [None, None], None),
     (3, "star", "*", ui.YELLOW, ui.BRIGHT, [None, None], None),
 )
@@ -120,6 +121,8 @@ class World:
         self.n_blocks_rnd = w_def["n_blocks_rnd"]
         self.max_ticks = w_def["max_ticks"]
         self.chk_ticks = w_def["chk_ticks"]
+        self.fps = w_def["fps"]
+        self.spf = 1/self.fps
 
         # Initialize world: ticks and list of things on it.
         self.ticks = 0

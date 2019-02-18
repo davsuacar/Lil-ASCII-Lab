@@ -4,6 +4,7 @@
 # libraries
 import numpy as np
 from curses import wrapper
+import time
 
 # modules
 import world2 as w
@@ -29,8 +30,11 @@ def main_loop(stdscr, world):
             if (world.time_to_ask()):
                 user_input = u_i.ask("Continue? (y/n) ")
                 end_loop = (user_input.lower() != "y")
-            # Evolve world by one tick
+            # Evolve world by one regular tick
+            t_start = time.time()
             world.tick()
+            t_end = time.time()
+            time.sleep(world.spf - (t_end - t_start))
 
     # Exit program
     _ = u_i.ask("Bye! (Press to exit)")
