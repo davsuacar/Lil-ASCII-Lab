@@ -1,21 +1,22 @@
+###############################################################
+# User Interface
+# for "Lil' ASCII Lab"
+
+###############################################################
+# IMPORT
+
 # Libraries
 import numpy as np
+import random
 import curses
 from curses import wrapper
 import signal, os
 
 # Modules
-import textcolors as colors
+# (none)
 
-# Output settings:
-# Define how I/O will happen
-IO_def = {
-    "resize_term":  False,  # Flag to resize the actual terminal where program runs
-    "spacing":      1,      # Number of 'spc' chars to concatenate at the right of every tile (for an even vert/horiz aspect ratio)
-    "extend_block": False,  # Whether blocks must be replicated to avoid interstices (TBA: is this needed?)
-    "min_width":    20,     # Minimum width for the text interface, regardless of board size
-    "max_size":     100,    # Maximum size for width of height for the world
-}
+###############################################################
+#   SETTINGS
 
 # Constants based on curses' 8 basic colors
 BLACK   = curses.COLOR_BLACK
@@ -31,9 +32,21 @@ colors = (BLACK, BLUE, CYAN, GREEN, MAGENTA, RED, WHITE, YELLOW)
 color_names = ("BLACK", "BLUE", "CYAN", "GREEN", "MAGENTA", "RED", "WHITE", "YELLOW")
 
 NORMAL  = 0                 # No offset for normal colors (1..8)
-BRIGHT  = 8                 # Offset to get brighter colors assuming COLORS >= 16
-
+BRIGHT  = 8                 # Offset to get brighter colors, assuming COLORS >= 16
 MAX_COLORS = 16             # The number of predefined colors to try to use
+
+# Output settings:
+# Define how I/O will happen
+IO_def = {
+    "resize_term":  False,  # Flag to resize the actual terminal where program runs
+    "spacing":      1,      # Number of 'spc' chars to concatenate at the right of every tile (for an even vert/horiz aspect ratio)
+    "extend_block": False,  # Whether blocks must be replicated to avoid interstices (TBA: is this needed?)
+    "min_width":    20,     # Minimum width for the text interface, regardless of board size
+    "max_size":     100,    # Maximum size for width of height for the world
+}
+
+###############################################################
+# CLASSES
 
 class UI:
     def __init__(self, stdscr, world):
@@ -84,7 +97,7 @@ class UI:
 
         color_pairs = np.full((MAX_COLORS, MAX_COLORS), 0)
         if has_colors:
-            pair = 1 # Skip pair 0 ("wired" to white on black)
+            pair = 1 # Skip pair 0 ("wired" to black and white)
             # Terminal has colors: initialize pairs for curses
             for fg in range(MAX_COLORS):         # colors ranging from 0 to 15
                 for bg in range(MAX_COLORS):    # colors ranging from 0 to 15
@@ -127,7 +140,8 @@ class UI:
 
     def ask(self, question):
         # Ask user for input on footer zone
-        self.footer.clear()
+        curses.flushinp() # Throw away any typeahead not yet processed.
+        self.footer.clear() # Clear footer window
         pair = self.pair(BLACK, WHITE)
         self.footer.addnstr(0, 0, question.ljust(self.width - 1), self.footer.getmaxyx()[1] - 1, pair)
         self.footer.refresh()
@@ -142,7 +156,7 @@ class UI:
 
         # HEADER: Title on top
         title = " " + self.world.name + " "
-        time = " " + str(self.world.ticks) + " "
+        time = " " + str(self.world.steps) + " "
         fill = " " * max(0, self.width - len(title) - len(time))
         
         text = title + fill
@@ -191,10 +205,11 @@ class UI:
         # Refresh screen
         curses.doupdate()
 
-# MAIN: code for testing purposes only
+###############################################################
+# MAIN PROGRAM: code for TESTING purposes only
 
 def main(scr):
-    scr.scrollok(True)
+    scr.scrollok(True)  # Not really working, so limiting tests to terminal's height.
 
     # Call as main module generates a series of tests on the terminal.
     if not curses.has_colors():
@@ -210,11 +225,11 @@ def main(scr):
         n_colors = min(16, c_colors)    # Demo is limited to 16 colors
         color_pairs = np.full((n_colors, n_colors), 0)
 
-        # Start reporting
-        scr.addstr(0, 0, "This terminal can use {} colors. See some combinations:".format(c_colors), 0)
-
         # Loop over possible pairs
         scr.clear()
+
+        # Start reporting
+        scr.addstr(0, 0, "This terminal can use {} colors. See some combinations:".format(c_colors), 0)
 
         pair = 1
         n_pairs = 0
@@ -233,20 +248,20 @@ def main(scr):
                         color_pairs[fg, bg] = color_pair[max(fg, fg - 8), max(bg, bg - 8)]
                 n_pairs += 1
 
-        # Demo some combinations
+        # Demo out some combinations
         max_y, _ = scr.getmaxyx()
         for y in range(1, max_y -1):
-            pair = np.random.randint(1, n_pairs)
-            scr.addstr(y, 0, "TESTING COLORS", curses.color_pair(pair))
+            pair = random.randint(1, n_pairs)
+            scr.addstr(y, 0, "  Random fg&bg colors  ", curses.color_pair(pair))
             y += 1
         
         # Final message
-        scr.addstr(y, 0, "Press to exit...{}".format(n_pairs), 0)
+        scr.addstr(y, 0, "Press to exit...", 0)
         scr.refresh()
         _ = scr.getkey()
 
 if __name__ == '__main__':
     # Call as main module generates a series of tests on the terminal.
-    print("Tests with ncurses...")
+    print("ui.py is a module of Lil' ASCII Lab.")
+    _ = input("Press to test some ncurses colors...")
     wrapper(main)
-

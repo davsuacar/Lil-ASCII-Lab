@@ -3,9 +3,11 @@
 ## Interface
 
 HI:
+Add tracking window (on the right/bottom?) (Use lib: matplotlib, pyqtgraph?).
 Add tracking of 1 specific agent (energy, AI, etc.)
 
 LO:
+Handle world sizes not fitting on terminal.
 Handle resize terminal without exiting.
 Implement basic agent animation in "aspect" (2 or 3 looping chars).
 
@@ -20,18 +22,32 @@ LO:
 Implement basic logic:
 
 * Input = Status + Reward, from the World.
-* Policy = hardcoded behaviours (random, herbivores, predators...)
+* Policy = hardcoded behaviours (random, herbivores, predators...).
 * Actions = Move, Eat, No-action.
+
+## World Dynamics
+
+TO BE DEFINED
+Action Space(s): discrete / continuous
+Timing: Sim-turned vs. turn-based.
+State: Complete / incomplete information for agents.
+
 
 ## Overall features
 
 HI:
-Implement synchronized steps (ticks), e.g. 12 fps, 24 fps.
+-
 
 LO:
 Restrict maximum size of the world.
 Extract all world & character config. to external yaml files.
-Replicability: manage random seed at start (generate, store).
 Add logging (using standard 'logging' module).
 Add arguments to main program (module argparse).
-Add tracking window (on the right/bottom?) (Use lib: matplotlib, pyqtgraph?)
+
+
+
+# Features
+ncurses terminal support for b&w, 8 or 16 colors.
+Implement synchronized steps, e.g. 12 fps, 24 fps.
+Reproducibility: manage random seed at start (generate, store).
+

@@ -1,31 +1,36 @@
 ###############################################################
-# The world for the game
-# and its entities...
+# The world 
+# for "Lil' ASCII Lab" and its entities...
 
 ###############################################################
-#   MODULES
+# IMPORT
 
+# libraries
 import numpy as np
+import random
+import time
+
+# Modules
 import ui
 
 ###############################################################
-#   DEFINITIONS
+#   SETTINGS
 #   color:  from among 8 options (BLACK, BLUE, CYAN, GREEN, MAGENTA, RED, WHITE, YELLOW)
 #   intensity: NORMAL or BRIGHT
-
 
 # World definition:
 #
 World_def = {
     "name":         "Lil' ASCII Lab",
     "width":        12,                 # x from 0 to width - 1
-    "height":       8,                  # y from 0 to height - 1
+    "height":       28,                  # y from 0 to height - 1
     "bg_color":     ui.GREEN,           # background color
     "bg_intensity": ui.NORMAL,          # background intensity (NORMAL or BRIGHT)
-    "n_blocks_rnd": 0.4,                # % of +/- randomness in number of blocks.
-    "max_ticks":    100,                # How long to run the world ('None' for infinite loop).
-    "chk_ticks":    10,               # How often to ask user for quit/go-on ('None' = never ask).
-    "fps":          12
+    "n_blocks_rnd": 0.4,                # % of +/- randomness in number of blocks
+    "max_steps":    None,               # How long to run the world ('None' for infinite loop)
+    "chk_steps":    10,                 # How often to ask user for quit/go-on ('None' = never ask)
+    "fps":          12,                 # Number of steps to run per second
+    "random_seed":  None,               # Define seed to produce repeatable executions or None for random.
 }
 
 # Tiles definition:
@@ -38,8 +43,8 @@ Tile_def = (
 #   number of instances (or None for RND, based on world's width and % of randomness)
 #   type, i.e. its name
 #   aspect: " " for a generic full block (which will be doubled to fit world's spacing)
-#               ONE single character, e.g. "#" (which will be doubled to fit world's spacing)
-#               TWO characters for specific styles (e.g. "[]")
+#           ONE single Unicode character, e.g. "#" (which will be replicated to fit world's spacing)
+#           TWO Unicode characters for specific styles (e.g. "[]", "▛▜", "◢◣")
 #   color & intensity:  (see above)
 #   position:   (a tuple, currently ignored)
 Block_def = (
@@ -51,7 +56,7 @@ Block_def = (
 # Agent definition:
 #   number of instances
 #   type, i.e. its name
-#   aspect: one single character
+#   aspect: one single Unicode character
 #   color & intensity:  (see above)
 #   initial position (or RND). If more than one instance, it will be ignored.
 #   ai (currently ignored)
@@ -61,14 +66,16 @@ Agents_def = (
     (3, "star", "*", ui.YELLOW, ui.BRIGHT, [None, None], None),
 )
 
-# Extended ASCII (e.g.: ░ ▒ ▓ █ ■ ▀ ▄ █ ▚
+# Extended ASCII. E.g.: ░ ▒ ▓ █ ■ ▀ ▄ █ ▚
 # Full list here:
 # https://theasciicode.com.ar/extended-ascii-code/graphic-character-medium-density-dotted-ascii-code-177.html
 # 
 # Interesting Unicode characters:
 # https://en.wikipedia.org/wiki/List_of_Unicode_characters#Latin_script
+# http://www.amp-what.com/unicode/search/
 # ~ ≈ ≋ ⊙ Θ Ͼ Ͽ ͼͽ … „ . · ˙ • ° † ∞  ⎔ ◊ ∆ ¯-_ |-/\  <v^> ∏ ∐ ¤ ⁕ (⏜⏝)
 # 𝝮 Ϙ Д ⌆ ♀ ⍾ ⏕ ▲ ▶ ▼ ◀   ◢ ◣ ◤ ◥   ♠ ♣ ♥ ♦  	✖ ✔ ✱  ❨❩ () ▙ ▟ ▚ ▞ ▛ ▜  
+# ☗ ☁ ☀ ★ ☻ ⚉ ● • ◡ 
 
 ###############################################################
 # CLASSES
@@ -100,13 +107,13 @@ class Agent(Thing):
         # Initialize inherited and specific attributes
         super().__init__(name, aspect, color, intensity, position)
         self.ai = ai
-        self.ticks = 0
+        self.steps = 0
         # Update class variable
         Agent.num_agents += 1
 
-    def tick(self):
+    def step(self):
         # TBA: execute agent's AI and return chosen action(s).
-        self.ticks +=1
+        self.steps +=1
 
 class World:
     # A tiled, rectangular setting on which a little universe takes life.
@@ -119,13 +126,18 @@ class World:
         self.bg_color = w_def["bg_color"]
         self.bg_intensity = w_def["bg_intensity"]
         self.n_blocks_rnd = w_def["n_blocks_rnd"]
-        self.max_ticks = w_def["max_ticks"]
-        self.chk_ticks = w_def["chk_ticks"]
+        self.max_steps = w_def["max_steps"]
+        self.chk_steps = w_def["chk_steps"]
         self.fps = w_def["fps"]
         self.spf = 1/self.fps
 
-        # Initialize world: ticks and list of things on it.
-        self.ticks = 0
+        # Initialize world: randomness, steps and list of 'things' on it.
+        seed = w_def["random_seed"]
+        if seed == None: seed = time.time()
+        self.random_seed = seed
+        random.seed(seed)
+
+        self.steps = 0
         self.things = np.full((self.width, self.height), None) # create grid for agents and blocks
 
         # put TILES on the ground
@@ -151,7 +163,7 @@ class World:
         for b in b_def:                 # list of all types of block in the world.
             if(b[0] == None):           # Unspecified number of blocks.
                 n_random_blocks = (self.width * self.n_blocks_rnd) // 1 # abs. max variation
-                n_random_blocks = self.width + np.random.randint(-n_random_blocks, n_random_blocks+1)
+                n_random_blocks = self.width + random.randint(-n_random_blocks, n_random_blocks)
             else:                       # Specified # of blocks.
                 n_random_blocks = b[0]
 
@@ -198,8 +210,8 @@ class World:
 
     def find_free_tile(self):
         # Try a random tile
-        x = np.random.randint(0, self.width)
-        y = np.random.randint(0, self.height)
+        x = random.randint(0, self.width - 1)
+        y = random.randint(0, self.height - 1)
         found = self.is_empty(x, y)
 
         x0, y0 = x, y                   # Starting position to search from
@@ -216,23 +228,31 @@ class World:
 
         return (x, y), res
 
-    def tick(self):
-        self.ticks +=1
-        # Tick all agents
-        map(Agent.tick, self.agents)
+    def step(self):
+        self.steps +=1
+        # Run step over all agents
+        map(Agent.step, self.agents)
 
     def is_end_loop(self):
-        if self.max_ticks is None:
+        if self.max_steps is None:
             end = False
         else:
-            end = self.ticks >= self.max_ticks
+            end = self.steps >= self.max_steps
         return (end)
 
     def time_to_ask(self):
-        if self.chk_ticks == None:
+        if self.chk_steps == None:
             ask = False
         else:
-            ask = self.ticks % self.chk_ticks == 0
+            ask = self.steps % self.chk_steps == 0
         return (ask)
+
+###############################################################
+# MAIN PROGRAM: code for TESTING purposes only
+
+if __name__ == '__main__':
+    print("world.py is a module of Lil' ASCII Lab and has no real main module.")
+    _ = input("Press to exit...")
+
 
 
