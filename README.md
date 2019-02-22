@@ -1,7 +1,6 @@
 # *"Lil' ASCII Lab"*
 
-v 0.1
-by Alberto H
+(v 0.1) by Alberto H
 
 ## About this project
 
