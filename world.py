@@ -22,8 +22,8 @@ import ui
 #
 World_def = {
     "name":         "Lil' ASCII Lab",
-    "width":        12,                 # x from 0 to width - 1
-    "height":       28,                  # y from 0 to height - 1
+    "width":        15,                 # x from 0 to width - 1
+    "height":       10,                  # y from 0 to height - 1
     "bg_color":     ui.GREEN,           # background color
     "bg_intensity": ui.NORMAL,          # background intensity (NORMAL or BRIGHT)
     "n_blocks_rnd": 0.4,                # % of +/- randomness in number of blocks
@@ -59,23 +59,15 @@ Block_def = (
 #   aspect: one single Unicode character
 #   color & intensity:  (see above)
 #   initial position (or RND). If more than one instance, it will be ignored.
+#   initial life assigned at start
+#   step_cost, i.e. life consumption per step
 #   ai (currently ignored)
 Agents_def = (
-    (1, "Omi", "𝝮", ui.YELLOW, ui.BRIGHT, [0, 0], None),
-    (3, "apple", "", ui.RED, ui.BRIGHT, [None, None], None),
-    (3, "star", "*", ui.YELLOW, ui.BRIGHT, [None, None], None),
+    (1, "Omi", "𝝮", ui.YELLOW, ui.BRIGHT, [0, 0], 100, -1, None),
+    (2, "foe", "Д", ui.RED, ui.NORMAL, [None, None], 100, -1, None),
+    (3, "apple", "", ui.RED, ui.BRIGHT, [None, None], 20, 0, None),
+    (3, "star", "*", ui.YELLOW, ui.BRIGHT, [None, None], 30, 0, None),
 )
-
-# Extended ASCII. E.g.: ░ ▒ ▓ █ ■ ▀ ▄ █ ▚
-# Full list here:
-# https://theasciicode.com.ar/extended-ascii-code/graphic-character-medium-density-dotted-ascii-code-177.html
-# 
-# Interesting Unicode characters:
-# https://en.wikipedia.org/wiki/List_of_Unicode_characters#Latin_script
-# http://www.amp-what.com/unicode/search/
-# ~ ≈ ≋ ⊙ Θ Ͼ Ͽ ͼͽ … „ . · ˙ • ° † ∞  ⎔ ◊ ∆ ¯-_ |-/\  <v^> ∏ ∐ ¤ ⁕ (⏜⏝)
-# 𝝮 Ϙ Д ⌆ ♀ ⍾ ⏕ ▲ ▶ ▼ ◀   ◢ ◣ ◤ ◥   ♠ ♣ ♥ ♦  	✖ ✔ ✱  ❨❩ () ▙ ▟ ▚ ▞ ▛ ▜  
-# ☗ ☁ ☀ ★ ☻ ⚉ ● • ◡ 
 
 ###############################################################
 # CLASSES
@@ -102,17 +94,51 @@ class Block(Thing):
         Block.num_blocks += 1
 
 class Agent(Thing):
+    # Default class for Agents
     num_agents = 0
-    def __init__(self, name, aspect, color, intensity, position, ai = None):
+    def __init__(self, name, aspect, color, intensity, position, initial_life, step_cost, ai = None):
         # Initialize inherited and specific attributes
         super().__init__(name, aspect, color, intensity, position)
+        self.life = initial_life
+        self.step_cost = step_cost
         self.ai = ai
         self.steps = 0
+        # Initialize current_state, current_life_delta and chosen_action
+        self.current_state = None
+        self.current_life_delta = 0
+        self.chosen_action = None
         # Update class variable
         Agent.num_agents += 1
 
-    def step(self):
-        # TBA: execute agent's AI and return chosen action(s).
+    def choose_action(self, world):
+        self.current_state = self.interpret_state(world)
+        action = self.policy()
+        return action
+
+    def interpret_state(self, world):
+        # Extraction of the information available for the agent.
+        # Default: Complete information, the whole world is visible.
+        return world
+
+    def policy(self):
+        # Policy function returning the action chosen by the agent
+        # Default: No action
+        return None
+
+    def update(self, action, result, life_delta):
+        # Update state of agent after trying some action
+        # No move or anything for now...
+        # self.aspect = ...
+        # self.color = ...
+        # self.position = ...
+        self.current_life_delta = life_delta
+        self.life += life_delta
+
+        # Execute policy update (learning) based on:
+        # self.current_state
+        # self.current_life_delta
+        # self.chosen_action
+
         self.steps +=1
 
 class World:
@@ -150,15 +176,18 @@ class World:
 
         # put AGENTS in the world
         self.agents = []                # list of all types of agent in the world
+        self.tracked_agent = None       # the agent to track during simulation
         for a in a_def:                 # loop over the types of agent defined
             for i in range(a[0]):       # create the # of instances specified
                 # Create agent
-                agent = Agent(a[1], a[2], a[3], a[4], a[5], a[6])    # definition of the agent
+                agent = Agent(a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8])    # definition of the agent
                 # Put agent in the world on requested position, relocating on colisions.
                 res = self.move(agent, agent.position[0], agent.position[1], relocate=True)
                 self.agents.append(agent)
+                if self.tracked_agent == None:
+                    self.tracked_agent = agent
 
-        # put some BLOCKS in, # based on width
+        # put in some BLOCKS, # based on width
         self.blocks = []
         for b in b_def:                 # list of all types of block in the world.
             if(b[0] == None):           # Unspecified number of blocks.
@@ -229,9 +258,25 @@ class World:
         return (x, y), res
 
     def step(self):
-        self.steps +=1
         # Run step over all agents
-        map(Agent.step, self.agents)
+        for agent in self.agents:
+            # request action from agent based on world state
+            action = agent.choose_action(self)
+            # resolve results of trying to execute action
+            result, life_delta = self.execute_action(agent, action)
+            # new position, reward, other internal information.
+            agent.update(action, result, life_delta)
+
+        # update the world
+        self.steps +=1
+
+    def execute_action(self, agent, action):
+        # Check if the action is feasible and execute it returning results
+        # if action == None:
+        result = True
+        life_delta = 0
+            
+        return result, life_delta + agent.step_cost
 
     def is_end_loop(self):
         if self.max_steps is None:

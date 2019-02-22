@@ -10,6 +10,8 @@ LO:
 Handle world sizes not fitting on terminal.
 Handle resize terminal without exiting.
 Implement basic agent animation in "aspect" (2 or 3 looping chars).
+Implement graphic orientation signalling on agents to show orientation (e.g. a blinking arrow [▲ ▶ ▼ ◀] on one adyacent tile).
+Configurable BG color for the window (now it's all black)?
 
 ## AI
 

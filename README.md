@@ -42,10 +42,10 @@ This loops goes on till some final condition is reached or the maximal number of
     display the world
     check conditions to go on
     step start
-        update status + rewards for agents
+        update state + rewards for agents
         request actions from agents (and user?)
         resolve results of actions from agents (and from user?)
-        update the world (steps only?)
+        update the world
     step end
 
     display final state of the world

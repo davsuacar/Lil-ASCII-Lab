@@ -140,7 +140,7 @@ class UI:
 
     def ask(self, question):
         # Ask user for input on footer zone
-        curses.flushinp() # Throw away any typeahead not yet processed.
+        curses.flushinp() # Throw away any typeahead not yet processed
         self.footer.clear() # Clear footer window
         pair = self.pair(BLACK, WHITE)
         self.footer.addnstr(0, 0, question.ljust(self.width - 1), self.footer.getmaxyx()[1] - 1, pair)
@@ -200,7 +200,10 @@ class UI:
         self.board.noutrefresh()
 
         # FOOTER: N/A for now
-        self.say("(running...)")
+        #self.say("(running...)")
+        tracked_agent = self.world.tracked_agent
+        footer = tracked_agent.aspect + ": " + str(tracked_agent.life)
+        self.say(footer)
 
         # Refresh screen
         curses.doupdate()
