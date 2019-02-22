@@ -8,7 +8,7 @@ by Alberto H
 "Lil' ASCII Lab" is a simple playground on which single-character beings come to life driven by their AI.
 Currently, agents running around will have simple, hard-coded behaviours. The long-term plan is to integrate Machine Learning-driven agents in.
 
-![sample world](https://github.com/Alberto-Hache/Lil-ASCII-Lab/blob/master/screenshots/blocky-meadows.png)
+![sample world](https://github.com/Alberto-Hache/Lil-ASCII-Lab/blob/master/screenshots/blocky-meadows.png | width = 100)
 
 ## World rules
 
