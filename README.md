@@ -8,7 +8,7 @@ by Alberto H
 "Lil' ASCII Lab" is a simple playground on which single-character beings come to life driven by their AI.
 Currently, agents running around will have simple, hard-coded behaviours. The long-term plan is to integrate Machine Learning-driven agents in.
 
-![sample world](https://github.com/Alberto-Hache/Lil-ASCII-Lab/blob/master/screenshots/blocky-meadows.png | width = 100)
+<img src="https://github.com/Alberto-Hache/Lil-ASCII-Lab/blob/master/screenshots/blocky-meadows.png" width="100">
 
 ## World rules
 
@@ -26,7 +26,7 @@ An **'agent'** is, finally, a **"living" entity**. It occupies a single tile too
 
 A **'world'** is the setting on which a little universe takes life. This is how it works:
 
-* world's are initialized according to some pre-specified settings, which may include certain degrees of randomness.
+* worlds are initialized according to some pre-specified settings, which may include certain degrees of randomness.
 * time flows as a **loop of *synchronous* 'steps' for all agents**.
 * at **step start**, all agents get their status updated (including possible rewards from previous actions).
 * **'during' the step**, each agent decides the action(s) to perform, as a request to the world (e.g. a move to other tile, an attack on other agent, grabbing some resource (which is just a most basing agent)).
