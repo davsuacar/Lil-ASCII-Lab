@@ -16,8 +16,8 @@ Configurable BG color for the window (now it's all black)?
 ## AI
 
 HI:
-Implement a basic random AI (e.g. random moves / still with RND inertia).
 Implement dynamics of basic attributes: energy (initialization, consumption, death).
+Implement a basic random AI (e.g. random moves / still, with RND inertia).
 Implement dynamics of basic attributes: inventory.
 
 LO:
@@ -34,19 +34,16 @@ Action Space(s): discrete / continuous
 Timing: Sim-turned vs. turn-based.
 State: Complete / incomplete information for agents.
 
-
 ## Overall features
 
 HI:
--
+(none)
 
 LO:
 Restrict maximum size of the world.
 Extract all world & character config. to external yaml files.
 Add logging (using standard 'logging' module).
 Add arguments to main program (module argparse).
-
-
 
 # Features
 ncurses terminal support for b&w, 8 or 16 colors.
