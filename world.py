@@ -21,52 +21,61 @@ import ui
 # World definition:
 #
 World_def = {
-    "name":         "Lil' ASCII Lab",
+    "name":         "Random Blox",
     "width":        15,                 # x from 0 to width - 1
-    "height":       10,                  # y from 0 to height - 1
-    "bg_color":     ui.GREEN,           # background color
+    "height":       12,                 # y from 0 to height - 1
+    "bg_color":     ui.BLACK,           # background color
     "bg_intensity": ui.NORMAL,          # background intensity (NORMAL or BRIGHT)
     "n_blocks_rnd": 0.4,                # % of +/- randomness in number of blocks
     "max_steps":    None,               # How long to run the world ('None' for infinite loop)
-    "chk_steps":    10,                 # How often to ask user for quit/go-on ('None' = never ask)
-    "fps":          12,                 # Number of steps to run per second
+    "chk_steps":    20,                 # How often to ask user for quit/go-on ('None' = never ask)
+    "fps":          10,                 # Number of steps to run per second (TBA: full speed if 'None'?)
     "random_seed":  None,               # Define seed to produce repeatable executions or None for random.
 }
 
 # Tiles definition:
 # type of tile, aspect, color, intensity, position (not specified here)
 Tile_def = (
-    ("tile", "…", ui.GREEN, ui.BRIGHT, [None, None])
+    ("tile", "·", ui.BLACK, ui.BRIGHT, [None, None])
 )
 
 # Block definition: 
 #   number of instances (or None for RND, based on world's width and % of randomness)
 #   type, i.e. its name
 #   aspect: " " for a generic full block (which will be doubled to fit world's spacing)
-#           ONE single Unicode character, e.g. "#" (which will be replicated to fit world's spacing)
+#           ONE single Unicode character, e.g. "#" (which will be doubled to fit world's spacing)
 #           TWO Unicode characters for specific styles (e.g. "[]", "▛▜", "◢◣")
 #   color & intensity:  (see above)
 #   position:   (a tuple, currently ignored)
 Block_def = (
-    (8, "water", " ", ui.BLUE, ui.BRIGHT, [None, None]),
-    (2, "block", "▛▜", ui.MAGENTA, ui.NORMAL, [None, None]),
-    (None, "fence", "#", ui.BLACK, ui.BRIGHT, [None, None]),
+#    (None, "block", " ", ui.BLACK, ui.BRIGHT, [None, None]),
+#    (4, "block2", "▛▜", ui.BLUE, ui.NORMAL, [None, None]),
+    (10, "fence", "#", ui.BLACK, ui.BRIGHT, [None, None]),
+    (40, "fence2", "▓", ui.BLACK, ui.BRIGHT, [None, None]),
 )
 
 # Agent definition:
 #   number of instances
 #   type, i.e. its name
-#   aspect: one single Unicode character
+#   aspect: one single Unicode character (e.g. "𝝮")
 #   color & intensity:  (see above)
 #   initial position (or RND). If more than one instance, it will be ignored.
-#   initial life assigned at start
-#   step_cost, i.e. life consumption per step
+#   (energy-related settings:)
+#       initial energy assigned at start
+#       maximum energy the agent can acquire
+#       bite power, amount of energy the agent can take with one bite
+#       step_cost, i.e. energy consumption per step
+#
 #   ai (currently ignored)
 Agents_def = (
-    (1, "Omi", "𝝮", ui.YELLOW, ui.BRIGHT, [0, 0], 100, -1, None),
-    (2, "foe", "Д", ui.RED, ui.NORMAL, [None, None], 100, -1, None),
-    (3, "apple", "", ui.RED, ui.BRIGHT, [None, None], 20, 0, None),
-    (3, "star", "*", ui.YELLOW, ui.BRIGHT, [None, None], 30, 0, None),
+    (1, "Omi", "𝝮", ui.GREEN, ui.BRIGHT, [None, None], \
+        (100, 110, 5, -1), None),
+    (2, "foe", "Д", ui.MAGENTA, ui.NORMAL, [None, None], \
+        (100, 110, 10, -1), None),
+    (3, "apple", "", ui.RED, ui.BRIGHT, [None, None], \
+        (20, 0, 0, 0), None),
+    (3, "star", "*", ui.YELLOW, ui.BRIGHT, [None, None], \
+        (30, 0, 0, -1), None),
 )
 
 ###############################################################
@@ -96,23 +105,30 @@ class Block(Thing):
 class Agent(Thing):
     # Default class for Agents
     num_agents = 0
-    def __init__(self, name, aspect, color, intensity, position, initial_life, step_cost, ai = None):
+    def __init__(self, a_def):
         # Initialize inherited and specific attributes
-        super().__init__(name, aspect, color, intensity, position)
-        self.life = initial_life
-        self.step_cost = step_cost
-        self.ai = ai
+        super().__init__(a_def[0], a_def[1], a_def[2], a_def[3], a_def[4])
+        self.energy     = a_def[5][0]
+        self.max_energy = a_def[5][1]
+        self.bite_power = a_def[5][2]
+        self.step_cost  = a_def[5][3]
+        self.ai = a_def[6]
         self.steps = 0
-        # Initialize current_state, current_life_delta and chosen_action
+        # Initialize current_state, current_energy_delta and chosen_action
         self.current_state = None
-        self.current_life_delta = 0
+        self.current_energy_delta = 0
         self.chosen_action = None
         # Update class variable
         Agent.num_agents += 1
 
+    def update_energy(self, delta):
+        # Keep within 0 and agent's max_energy
+        self.current_energy_delta = delta
+        self.energy = max(min(self.energy + delta, self.max_energy), 0)
+
     def choose_action(self, world):
         self.current_state = self.interpret_state(world)
-        action = self.policy()
+        action = self.policy(self.current_state)
         return action
 
     def interpret_state(self, world):
@@ -120,24 +136,26 @@ class Agent(Thing):
         # Default: Complete information, the whole world is visible.
         return world
 
-    def policy(self):
+    def policy(self, state):
         # Policy function returning the action chosen by the agent
         # Default: No action
-        return None
+        action = None
+        self.chosen_action = action
 
-    def update(self, action, result, life_delta):
+        return action
+
+    def update(self, action, success, energy_delta):
         # Update state of agent after trying some action
         # No move or anything for now...
         # self.aspect = ...
         # self.color = ...
         # self.position = ...
-        self.current_life_delta = life_delta
-        self.life += life_delta
+        self.update_energy(energy_delta)
 
         # Execute policy update (learning) based on:
-        # self.current_state
-        # self.current_life_delta
-        # self.chosen_action
+        #   self.current_state (S_t)
+        #   self.current_energy_delta (r_t)
+        #   self.chosen_action (A_t)
 
         self.steps +=1
 
@@ -156,6 +174,7 @@ class World:
         self.chk_steps = w_def["chk_steps"]
         self.fps = w_def["fps"]
         self.spf = 1/self.fps
+        self.creation_time = time.time
 
         # Initialize world: randomness, steps and list of 'things' on it.
         seed = w_def["random_seed"]
@@ -180,7 +199,7 @@ class World:
         for a in a_def:                 # loop over the types of agent defined
             for i in range(a[0]):       # create the # of instances specified
                 # Create agent
-                agent = Agent(a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8])    # definition of the agent
+                agent = Agent(a[1:])    # definition of the agent
                 # Put agent in the world on requested position, relocating on colisions.
                 res = self.move(agent, agent.position[0], agent.position[1], relocate=True)
                 self.agents.append(agent)
@@ -245,7 +264,6 @@ class World:
 
         x0, y0 = x, y                   # Starting position to search from
         res = 0                         # Fail condition (0: success; 1: board is full)
-
         while not found and not (res == 1):
             x = (x+1)%self.width        # Increment x not exceeding width
             if x == 0 :                 # When x is back to 0, increment y not exceeding height
@@ -263,9 +281,9 @@ class World:
             # request action from agent based on world state
             action = agent.choose_action(self)
             # resolve results of trying to execute action
-            result, life_delta = self.execute_action(agent, action)
-            # new position, reward, other internal information.
-            agent.update(action, result, life_delta)
+            success, energy_delta = self.execute_action(agent, action)
+            # Set new position, reward, other internal information
+            agent.update(action, success, energy_delta)
 
         # update the world
         self.steps +=1
@@ -273,10 +291,10 @@ class World:
     def execute_action(self, agent, action):
         # Check if the action is feasible and execute it returning results
         # if action == None:
-        result = True
-        life_delta = 0
+        success = True
+        energy_delta = 0
             
-        return result, life_delta + agent.step_cost
+        return success, energy_delta + agent.step_cost
 
     def is_end_loop(self):
         if self.max_steps is None:

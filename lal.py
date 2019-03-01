@@ -45,11 +45,13 @@ def main_loop(stdscr, world):
 
 if __name__ == '__main__':
     # Main program
-    print("Lil' ASCII Lab starting...")
-    
+    print("Lil' ASCII Lab")
+    print("{:<20}{}".format("> Started:", time.ctime()))
+
     # Create the world and start "wrapped" environment.
     world = w.World(w.World_def, w.Tile_def, w.Block_def, w.Agents_def)
     wrapper(main_loop, world)
 
     # Quit program
-    print("Steps run: {}; Random seed: {}".format(world.steps, world.random_seed))
+    print("{:<20}{}".format("> Steps run:", world.steps))
+    print("{:<20}{}".format("> Random seed used:", world.random_seed))

@@ -11,7 +11,6 @@ Handle world sizes not fitting on terminal.
 Handle resize terminal without exiting.
 Implement basic agent animation in "aspect" (2 or 3 looping chars).
 Implement graphic orientation signalling on agents to show orientation (e.g. a blinking arrow [▲ ▶ ▼ ◀] on one adyacent tile).
-Configurable BG color for the window (now it's all black)?
 
 ## AI
 
@@ -37,7 +36,8 @@ State: Complete / incomplete information for agents.
 ## Overall features
 
 HI:
-(none)
+Allow Fast-Forward execution (off-clock).
+Allow Pause, Stop, Play, FF (at different speeds: x1, x2, ...)
 
 LO:
 Restrict maximum size of the world.
@@ -46,7 +46,7 @@ Add logging (using standard 'logging' module).
 Add arguments to main program (module argparse).
 
 # Features
+
 ncurses terminal support for b&w, 8 or 16 colors.
 Implement synchronized steps, e.g. 12 fps, 24 fps.
 Reproducibility: manage random seed at start (generate, store).
-

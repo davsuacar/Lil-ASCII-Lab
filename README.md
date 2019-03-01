@@ -83,7 +83,6 @@ Example:
         "random_seed":  None,       # Define seed to produce repeatable executions or None for random.
     }
 
-
 ### Tile definition
 
 Each tile in the world has its own instance, though for now only ONE type of tile can be used in a world. This is how it's defined:
@@ -107,9 +106,9 @@ Different types of block are possible, each with the following features:
 * *number of instances* (or None for RND, based on world's width and % of randomness).
 * *type*, i.e. its name.
 * *aspect*:
-    * " " for a generic full block (which will be doubled to fit world's spacing).
-    * ONE single Unicode character, e.g. "#" (which will be replicated to fit world's spacing).
-    * TWO Unicode characters for specific styles (e.g. "[]", "▛▜", "◢◣").
+  * " " for a generic full block (which will be doubled to fit world's spacing).
+  * ONE single Unicode character, e.g. "#" (which will be replicated to fit world's spacing).
+  * TWO Unicode characters for specific styles (e.g. "[]", "▛▜", "◢◣").
 * *color & intensity*:  (see above).
 * *position*: (a tuple, currently ignored).
 
