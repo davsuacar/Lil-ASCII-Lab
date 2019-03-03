@@ -3,19 +3,17 @@
 ## Interface
 
 HI:
-Add tracking window (on the right/bottom?) (Use lib: matplotlib, pyqtgraph?).
-Add tracking of 1 specific agent (energy, AI, etc.)
+-
 
 LO:
-Handle world sizes not fitting on terminal.
-Handle resize terminal without exiting.
 Implement basic agent animation in "aspect" (2 or 3 looping chars).
+Handle resize terminal without exiting.
+Detect when resizing the terminal would exceed screen dimensions.
 Implement graphic orientation signalling on agents to show orientation (e.g. a blinking arrow [▲ ▶ ▼ ◀] on one adyacent tile).
 
 ## AI
 
 HI:
-Implement dynamics of basic attributes: energy (initialization, consumption, death).
 Implement a basic random AI (e.g. random moves / still, with RND inertia).
 Implement dynamics of basic attributes: inventory.
 
@@ -37,7 +35,8 @@ State: Complete / incomplete information for agents.
 
 HI:
 Allow Fast-Forward execution (off-clock).
-Allow Pause, Stop, Play, FF (at different speeds: x1, x2, ...)
+Allow Pause, Stop, Play, FF (at different speeds: x1, x2, ...).
+In Fast-Forward mode, consider skipping frames drawing?
 
 LO:
 Restrict maximum size of the world.
@@ -46,7 +45,25 @@ Add logging (using standard 'logging' module).
 Add arguments to main program (module argparse).
 
 # Features
-
-ncurses terminal support for b&w, 8 or 16 colors.
+Implement dynamics of basic attributes: energy (initialization, consumption, death).
+Add ncurses terminal support for b&w, 8 or 16 colors.
 Implement synchronized steps, e.g. 12 fps, 24 fps.
 Reproducibility: manage random seed at start (generate, store).
+
+UI:
+Handle sizes not fitting on terminal:
+Overall UI:
+- excessive board width
+- excessive board height
+- insuficient space for board + tracker
+
+Add "Lil' ASCI Lab" logo to tracker.
+
+Check Board for:
+- Long world names
+- Long "LIVE/PAUSED" strings?
+- Long ask()/say() arguments
+Check Tracker for:
+- Long main character name
+- Long number of steps
+- long placeholder

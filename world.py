@@ -22,13 +22,13 @@ import ui
 #
 World_def = {
     "name":         "Random Blox",
-    "width":        15,                 # x from 0 to width - 1
-    "height":       12,                 # y from 0 to height - 1
+    "width":        20,                 # x from 0 to width - 1
+    "height":       14,                 # y from 0 to height - 1
     "bg_color":     ui.BLACK,           # background color
     "bg_intensity": ui.NORMAL,          # background intensity (NORMAL or BRIGHT)
     "n_blocks_rnd": 0.4,                # % of +/- randomness in number of blocks
     "max_steps":    None,               # How long to run the world ('None' for infinite loop)
-    "chk_steps":    20,                 # How often to ask user for quit/go-on ('None' = never ask)
+    "chk_steps":    100,                 # How often to ask user for quit/go-on ('None' = never ask)
     "fps":          10,                 # Number of steps to run per second (TBA: full speed if 'None'?)
     "random_seed":  None,               # Define seed to produce repeatable executions or None for random.
 }
@@ -64,18 +64,18 @@ Block_def = (
 #       initial energy assigned at start
 #       maximum energy the agent can acquire
 #       bite power, amount of energy the agent can take with one bite
-#       step_cost, i.e. energy consumption per step
+#       step_cost, i.e. energy consumption per step regardless of action
 #
 #   ai (currently ignored)
 Agents_def = (
-    (1, "Omi", "𝝮", ui.GREEN, ui.BRIGHT, [None, None], \
+    (1, "Omi", "Ω", ui.GREEN, ui.BRIGHT, [None, None], \
         (100, 110, 5, -1), None),
     (2, "foe", "Д", ui.MAGENTA, ui.NORMAL, [None, None], \
         (100, 110, 10, -1), None),
     (3, "apple", "", ui.RED, ui.BRIGHT, [None, None], \
-        (20, 0, 0, 0), None),
+        (20, 20, 0, -0.001), None),
     (3, "star", "*", ui.YELLOW, ui.BRIGHT, [None, None], \
-        (30, 0, 0, -1), None),
+        (30, 30, 0, 0), None),
 )
 
 ###############################################################
@@ -285,7 +285,8 @@ class World:
             # Set new position, reward, other internal information
             agent.update(action, success, energy_delta)
 
-        # update the world
+        # update the world's info
+        self.agents.sort(key = lambda x: x.energy, reverse=True)
         self.steps +=1
 
     def execute_action(self, agent, action):

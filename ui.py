@@ -39,14 +39,15 @@ MAX_COLORS = 16             # The number of predefined colors to try to use
 # Output settings:
 # Define how I/O will happen
 UI_def = {
-    "resize_term":      False,  # Flag to resize the actual terminal where program runs
+    "resize_term":      False,  # Flag to allows resizing the actual terminal where program runs
     "spacing":          1,      # Number of 'spc' chars to concatenate at the right of every tile (for an even vert/horiz aspect ratio)
     "extend_blocks":    False,   # Whether blocks will be doubled to cover "holes"
     "min_ui_width":     20,     # Minimum width for the text interface, regardless of board size
     "min_ui_height":    12,     # Minimum height for the text interface, regardeless of board size
     "max_size":         100,    # Maximum size for width of height for the world (TBA: manage too big worlds)
     "header2_width":    6,      # Header space reserved for " LIVE ", "PAUSED", etc.
-    "tracking_width":   50,     # Width for the tracking space will be set up on the right (0 for none)
+    "tracking_width":   50,     # Width for the tracking space will be set up on the right.
+    "name_length":      10,     # Maximum length displayed of agents' names.
     "window_bg":        BLACK,  # BG color of the full terminal window
     "header_fg":        WHITE + NORMAL, # FG color of the TITLE of the world
     "header_bg":        BLUE + NORMAL,  # BG color of the TITLE of the world
@@ -54,7 +55,7 @@ UI_def = {
     "header_bg3":       MAGENTA + BRIGHT,   # BG color of the shorter special field
     "footer_fg":        BLACK + NORMAL, # FG color of the FOOTER
     "footer_bg":        WHITE + NORMAL, # BG color of the FOOTER
-    "tracker_fg":       GREEN + BRIGHT, # FG color of the Tracker window
+    "tracker_fg":       GREEN, # FG color of the Tracker window
     "tracker_bg":       BLACK + NORMAL, # BF color of the Tracker window
 }
 
@@ -73,13 +74,20 @@ class UI:
         self.spc_str = " " * self.spc_len     # doubling columns for esthetic reasons
         self.extend_blocks = UI_def["extend_blocks"]
         self.tracker_width = UI_def["tracking_width"]
+        self.name_length = UI_def["name_length"]
 
-        # Layout dimensions
+        # UI layout dimensions
         self.height = max(UI_def["min_ui_height"], 1 + self.world.height + 1)   # header + board + footer
         self.board_width = max(UI_def["min_ui_width"], self.world.width * (1 + self.spc_len)) # Adapt to settings, with a minimum width
         self.width = self.board_width + self.tracker_width
         self.header2_width = UI_def["header2_width"]
         self.tracker_height = UI_def["min_ui_height"]
+
+        # Check if UI dimensions fit in terminal
+        self.safe_columns = 1 # number of extra characters on the right
+        term_size_ok, term_height, term_width = self.handle_terminal_size(self.stdscr)
+        if not term_size_ok:
+            raise Exception("World and UI ({} x {}) don't fit in the terminal ({} x {}).".format(self.height, self.width, term_height, term_width))
 
         # Reshape aspect of world's blocks to fit UI settings
         self.reshape_blocks(self.world.blocks)
@@ -88,9 +96,6 @@ class UI:
         self.tracker_frame_1 = "┌" + "─"*(self.tracker_width - 2) + "┐"
         self.tracker_frame_2 = "│" + " "*(self.tracker_width - 2) + "│"
         self.tracker_frame_3 = "└" + "─"*(self.tracker_width - 2) + "┘"
-
-        # Resize terminal?
-        if self.resize_term: self.resize_terminal(self.height, self.width)
         
         # Initialize curses settings
         self.stdscr.nodelay(False)  # Enable waiting for user input stop
@@ -108,12 +113,11 @@ class UI:
         self.tracker_fg = UI_def["tracker_fg"]
         self.tracker_bg = UI_def["tracker_bg"]
 
-        # Create curses windows (extending width by N extra characters for safe addstr()...)
-        N = 1 # number of extra characters on the right
-        self.header = curses.newwin(1,                  self.board_width + N, 0, 0)
-        self.board = curses.newwin(self.world.height,   self.board_width + N, 1, 0)
-        self.footer = curses.newwin(1,                  self.board_width + N, self.world.height + 1, 0)
-        self.tracker = curses.newwin(UI_def["min_ui_height"], self.tracker_width + N, 0, self.board_width + 1)
+        # Create curses windows (extending width by N extra columns for safe addstr()...)
+        self.header = curses.newwin(1,                  self.board_width + self.safe_columns, 0, 0)
+        self.board = curses.newwin(self.world.height,   self.board_width + self.safe_columns, 1, 0)
+        self.footer = curses.newwin(1,                  self.board_width + self.safe_columns, self.world.height + 1, 0)
+        self.tracker = curses.newwin(UI_def["min_ui_height"], self.tracker_width + self.safe_columns, 0, self.board_width + 1)
         self.footer.keypad(True) # footer will handle keyboard input, so enabling cursor keys or navigation keys
 
         # Fill in the background of all windows with their color
@@ -172,6 +176,17 @@ class UI:
     def pair(self, fg, bg):
         return curses.color_pair(self.color_pairs[fg, bg])
 
+    def handle_terminal_size(self, stdscr):
+        if self.resize_term:
+            self.resize_terminal(self.height, self.width + 2*self.safe_columns)
+            curses.resize_term(self.height, self.width + 2*self.safe_columns)
+        term_height, term_width = stdscr.getmaxyx()
+        if term_height >= self.height and term_width >= self.width:
+            term_size_ok = True  # UI will fit in terminal
+        else:
+            term_size_ok = False
+        return (term_size_ok, term_height, term_width)
+                
     def resize_terminal(self, rows, columns):
         # Xterm Control Sequences through “CSI” (“Control Sequence Introducer”)
         # Resize terminal
@@ -193,9 +208,9 @@ class UI:
 
     def say(self, text):
         # Print some text on footer area
-        self.footer.clear()
+        self.footer.erase()
         pair = self.pair(self.footer_fg, self.footer_bg)
-        self.footer.addnstr(0, 0, text.ljust(self.board_width - 1), self.footer.getmaxyx()[1] - 1, pair)
+        self.footer.addnstr(0, 0, text.ljust(self.board_width - 1), self.footer.getmaxyx()[1] - 2, pair)
         self.footer.noutrefresh()
 
     def ask(self, question):
@@ -205,69 +220,76 @@ class UI:
         self.draw_title2("PAUSED", pair)
 
         curses.flushinp() # Throw away any typeahead not yet processed
-        self.footer.clear() # Clear footer window
+        self.footer.erase() # Erase footer window
         pair = self.pair(self.footer_fg, self.footer_bg)
-        self.footer.addnstr(0, 0, question.ljust(self.board_width - 1), self.footer.getmaxyx()[1] - 1, pair | curses.A_BLINK)
+        self.footer.addnstr(0, 0, question.ljust(self.board_width - 1), self.footer.getmaxyx()[1] - 2, pair | curses.A_BLINK)
         self.footer.refresh()
         answer = self.footer.getkey()
         return answer
 
     def refresh_tracker(self):
         # Define colors
-        default_color_pair = self.pair(self.tracker_fg, self.tracker_bg)
-        red_color_pair = self.pair(RED + BRIGHT, self.tracker_bg)
+        fg_color_pair           = self.pair(self.tracker_fg, self.tracker_bg)
+        fg_bright_color_pair    = self.pair(self.tracker_fg + BRIGHT, self.tracker_bg)
+        red_color_pair          = self.pair(RED, self.tracker_bg)
+        bright_red_color_pair   = self.pair(RED + BRIGHT, self.tracker_bg)
         tracked_agent = self.world.tracked_agent
-        agent_color_pair = self.pair(tracked_agent.color + tracked_agent.intensity, self.tracker_bg)
-        full_red_color_pair = self.pair(RED + BRIGHT, RED + BRIGHT)
-        full_default_color_pair = self.pair(self.tracker_fg, self.tracker_fg)
+        agent_color_pair        = self.pair(tracked_agent.color + tracked_agent.intensity, self.tracker_bg)
 
         # Clean up and draw a fresh Box
-        self.tracker.clear()
-        self.tracker.addstr(0, 0, self.tracker_frame_1, default_color_pair)
+        self.tracker.erase()
+        self.tracker.addstr(0, 0, self.tracker_frame_1, fg_bright_color_pair)
         for y in range(1, self.tracker_height - 1):
-            self.tracker.addstr(y, 0, self.tracker_frame_2, default_color_pair)
-        self.tracker.addstr(self.tracker_height - 1, 0, self.tracker_frame_3, default_color_pair)
+            self.tracker.addstr(y, 0, self.tracker_frame_2, fg_bright_color_pair)
+        self.tracker.addstr(self.tracker_height - 1, 0, self.tracker_frame_3, fg_bright_color_pair)
 
         # Tracked agent: header
-        self.tracker.addstr(0, 1, "[ ", default_color_pair)
+        self.tracker.addstr(0, 1, "[ ", fg_bright_color_pair)
         self.tracker.addstr(tracked_agent.aspect, agent_color_pair | curses.A_BOLD)
-        self.tracker.addstr(" ({}) ".format(tracked_agent.name), default_color_pair)
+        self.tracker.addstr(" ({}) ".format(tracked_agent.name[:self.name_length]), fg_bright_color_pair)
         energy_percent = round(100*tracked_agent.energy/tracked_agent.max_energy)
         n_blocks = 5
         n_greens = round(n_blocks * energy_percent / 100)
         n_reds = n_blocks - n_greens
         for i in range(n_greens):
-            self.tracker.addstr("▉", default_color_pair)
+            self.tracker.addstr("▉", fg_color_pair)
         for i in range(n_reds):
             self.tracker.addstr("▉", red_color_pair)
-        self.tracker.addstr(" {}% ]".format(energy_percent), default_color_pair)
+        self.tracker.addstr(" {}% ]".format(energy_percent), fg_bright_color_pair)
 
         # Tracked agent: energy
-        self.tracker.addstr(2, 2, "{:<12}".format('energy:'), default_color_pair)
-        self.tracker.addstr("{}".format(tracked_agent.energy), default_color_pair | curses.A_BOLD)
-        self.tracker.addstr(" / {} ".format(tracked_agent.max_energy), default_color_pair)
+        self.tracker.addstr(2, 2, "{:<12}".format('Energy:'), fg_bright_color_pair)
+        self.tracker.addstr("{}".format(tracked_agent.energy), fg_bright_color_pair)
+        self.tracker.addstr("/{} ".format(tracked_agent.max_energy), fg_bright_color_pair)
         if tracked_agent.current_energy_delta < 0:
-            self.tracker.addstr("▼", red_color_pair)
+            self.tracker.addstr("▼", bright_red_color_pair)
         elif tracked_agent.current_energy_delta > 0:
-            self.tracker.addstr("▲", default_color_pair)
+            self.tracker.addstr("▲", fg_bright_color_pair)
         
         # Tracked agent: AI
-        self.tracker.addstr(3, 2, "{:<12}{} ".format('AI:', str(tracked_agent.chosen_action)), default_color_pair)
-        self.tracker.addstr(4, 2, "{:<12}{} ".format('latest:', 'N/A'), default_color_pair)
-        self.tracker.addstr(5, 2, "{:<12}{} ".format('carrying:', '[]'), default_color_pair)
-        self.tracker.addstr(6, 2, "{:<12}{} ".format('message:', '[]'), default_color_pair)
-        self.tracker.addstr(7, 2, "{:<12}{} ".format('explored:', 'N/A'), default_color_pair)
+        self.tracker.addstr(3, 2, "{:<12}{} ".format('AI:', str(tracked_agent.chosen_action)), fg_bright_color_pair)
+        self.tracker.addstr(4, 2, "{:<12}{} ".format('Latest:', 'N/A'), fg_bright_color_pair)
+        self.tracker.addstr(5, 2, "{:<12}{} ".format('Carrying:', '[]'), fg_bright_color_pair)
+        self.tracker.addstr(6, 2, "{:<12}{} ".format('Message:', '[]'), fg_bright_color_pair)
+        self.tracker.addstr(7, 2, "{:<12}{} ".format('Explored:', 'N/A'), fg_bright_color_pair)
 
         # Rest of things (agents, blocks?)
-        # ...
+        y = 2 # Initial line
+        agents_list = self.world.agents[:self.tracker_height - 4] # Pick top of list, preserving 2 top rows + 2 bottom rows
+        for agent in agents_list:
+            agent_color_pair = self.pair(agent.color + agent.intensity, self.tracker_bg)
+            self.tracker.addstr(y, 25, agent.aspect, agent_color_pair)  # Approx. in the middle column
+            self.tracker.addstr(" {:<12}".format(agent.name[:self.name_length]), fg_color_pair)
+            self.tracker.addstr(" {:>6.2f}".format(agent.energy), fg_bright_color_pair)
+            y += 1
 
-        # Footer
+        # Tracker's footer
         time_run = str(datetime.timedelta( \
             seconds = (self.world.steps * self.world.spf)//1))
         left_line = " Step {} ({}) ".format(self.world.steps, time_run)
-        right_line = " (placeholder) "
-        self.tracker.addstr(self.tracker_height - 1, self.tracker_width -1 -len(right_line), right_line, default_color_pair | curses.A_REVERSE)
-        self.tracker.addstr(self.tracker_height - 1, 1, left_line, default_color_pair | curses.A_REVERSE)
+        right_line = " Lil' ASCII Lab 0.1 "
+        self.tracker.addstr(self.tracker_height - 1, 1, left_line, fg_bright_color_pair | curses.A_REVERSE)
+        self.tracker.addstr(self.tracker_height - 1, self.tracker_width -1 -len(right_line), right_line, fg_bright_color_pair)
 
         # All ready to refresh
         self.tracker.noutrefresh()
@@ -275,8 +297,8 @@ class UI:
     def draw(self):
         # Generate and display a full refresh of the world state using curses lib
 
-        # Clear screen first
-        self.stdscr.clear()
+        # Erase screen first
+        self.stdscr.erase()
 
         # HEADER: Title on top
         pair = self.pair(self.header_fg, self.header_bg)
@@ -331,7 +353,7 @@ def main(scr):
     # Call as main module generates a series of tests on the terminal.
     if not curses.has_colors():
         # Print basic b&w message
-        scr.clear()
+        scr.erase()
         scr.addstr(0,0, "This is a B&W terminal. Press to exit...", 0)
         scr.refresh()
         _ = scr.getkey()
@@ -343,7 +365,7 @@ def main(scr):
         color_pairs = np.full((n_colors, n_colors), 0)
 
         # Loop over possible pairs
-        scr.clear()
+        scr.erase()
 
         # Start reporting
         scr.addstr(0, 0, "This terminal can use {} colors. See some combinations:".format(c_colors), 0)
