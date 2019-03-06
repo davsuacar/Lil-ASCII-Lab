@@ -259,14 +259,14 @@ class UI:
 
         # Tracked agent: energy
         self.tracker.addstr(2, 2, "{:<12}".format('Energy:'), fg_bright_color_pair)
-        self.tracker.addstr("{}".format(tracked_agent.energy), fg_bright_color_pair)
-        self.tracker.addstr("/{} ".format(tracked_agent.max_energy), fg_bright_color_pair)
+        self.tracker.addstr("{:.1f}".format(tracked_agent.energy), fg_bright_color_pair)
+        self.tracker.addstr("/{:.0f} ".format(tracked_agent.max_energy), fg_bright_color_pair)
         if tracked_agent.current_energy_delta < 0:
             self.tracker.addstr("▼", bright_red_color_pair)
         elif tracked_agent.current_energy_delta > 0:
             self.tracker.addstr("▲", fg_bright_color_pair)
         
-        # Tracked agent: AI
+        # Tracked agent: Other information
         self.tracker.addstr(3, 2, "{:<12}{} ".format('AI:', str(tracked_agent.chosen_action)), fg_bright_color_pair)
         self.tracker.addstr(4, 2, "{:<12}{} ".format('Latest:', 'N/A'), fg_bright_color_pair)
         self.tracker.addstr(5, 2, "{:<12}{} ".format('Carrying:', '[]'), fg_bright_color_pair)
@@ -278,8 +278,8 @@ class UI:
         agents_list = self.world.agents[:self.tracker_height - 4] # Pick top of list, preserving 2 top rows + 2 bottom rows
         for agent in agents_list:
             agent_color_pair = self.pair(agent.color + agent.intensity, self.tracker_bg)
-            self.tracker.addstr(y, 25, agent.aspect, agent_color_pair)  # Approx. in the middle column
-            self.tracker.addstr(" {:<12}".format(agent.name[:self.name_length]), fg_color_pair)
+            self.tracker.addstr(y, 28, agent.aspect, agent_color_pair)  # Approx. in the middle column
+            self.tracker.addstr(" {:<11}".format(agent.name[:self.name_length]), fg_color_pair)
             self.tracker.addstr(" {:>6.2f}".format(agent.energy), fg_bright_color_pair)
             y += 1
 
@@ -345,7 +345,8 @@ class UI:
         curses.doupdate()
 
 ###############################################################
-# MAIN PROGRAM: code for TESTING purposes only
+# MAIN PROGRAM
+# code for TESTING purposes only
 
 def main(scr):
     scr.scrollok(True)  # Not really working, so limiting tests to terminal's height.

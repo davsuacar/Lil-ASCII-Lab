@@ -26,7 +26,7 @@ World_def = {
     "height":       14,                 # y from 0 to height - 1
     "bg_color":     ui.BLACK,           # background color
     "bg_intensity": ui.NORMAL,          # background intensity (NORMAL or BRIGHT)
-    "n_blocks_rnd": 0.4,                # % of +/- randomness in number of blocks
+    "n_blocks_rnd": 0.4,                # % of +/- randomness in number of blocks [0, 1]
     "max_steps":    None,               # How long to run the world ('None' for infinite loop)
     "chk_steps":    100,                 # How often to ask user for quit/go-on ('None' = never ask)
     "fps":          10,                 # Number of steps to run per second (TBA: full speed if 'None'?)
@@ -65,10 +65,11 @@ Block_def = (
 #       maximum energy the agent can acquire
 #       bite power, amount of energy the agent can take with one bite
 #       step_cost, i.e. energy consumption per step regardless of action
-#
 #   ai (currently ignored)
 Agents_def = (
-    (1, "Omi", "Ω", ui.GREEN, ui.BRIGHT, [None, None], \
+    (1, "wanderer", "⚉", ui.GREEN, ui.BRIGHT, [None, None], \
+        (110, 110.5, 5, -0.001), None),
+    (1, "Omi", "Ω", ui.BLUE, ui.BRIGHT, [None, None], \
         (100, 110, 5, -1), None),
     (2, "foe", "Д", ui.MAGENTA, ui.NORMAL, [None, None], \
         (100, 110, 10, -1), None),
@@ -78,8 +79,19 @@ Agents_def = (
         (30, 30, 0, 0), None),
 )
 
+# Actions definition:
+# An action consists of a verb and some arguments, expressed between brackets here.
+Actions_def = (
+    None,       # None (None)   Passive action, it has no arguments.
+    "MOVE",     # MOVE (X, Y)   Moving to specified coordinates.
+    "FEED",     # FEED (X, Y)   Feed on Agent in coordinates.
+)
+
 ###############################################################
 # CLASSES
+# Thing --- Tile
+#        |- Block
+#        |- Agent
 
 class Thing:
     # Root class containing the common attributes for all classes.
@@ -146,7 +158,7 @@ class Agent(Thing):
 
     def update(self, action, success, energy_delta):
         # Update state of agent after trying some action
-        # No move or anything for now...
+        # No moves or anything for now...
         # self.aspect = ...
         # self.color = ...
         # self.position = ...
@@ -158,6 +170,10 @@ class Agent(Thing):
         #   self.chosen_action (A_t)
 
         self.steps +=1
+
+###############################################################
+# CLASSES
+# World
 
 class World:
     # A tiled, rectangular setting on which a little universe takes life.
@@ -201,7 +217,7 @@ class World:
                 # Create agent
                 agent = Agent(a[1:])    # definition of the agent
                 # Put agent in the world on requested position, relocating on colisions.
-                res = self.move(agent, agent.position[0], agent.position[1], relocate=True)
+                _ = self.move_to(agent, agent.position[0], agent.position[1], relocate=True)
                 self.agents.append(agent)
                 if self.tracked_agent == None:
                     self.tracked_agent = agent
@@ -218,31 +234,32 @@ class World:
             n = 0
             while n < n_random_blocks:
                 block = Block(b[1], b[2], b[3], b[4], b[5])
-                res = self.move(block)      # Put in random position
+                _ = self.move_to(block)      # Put in random position
                 self.blocks.append(block)
                 n += 1
 
-    def move(self, thing, x = None, y = None, relocate = False):
+    def move_to(self, thing, x = None, y = None, relocate = False):
         # If x, y not defined, find a random free place and move the Thing there.
         # If x, y are defined,
         #       if not occupied, move a Thing to x, y;
         #       if occupied, relocate randomly if specified, or fail otherwise.
+        # Fail condition (0: success; 1: fail)        
         if x == None or y == None:
             # x, y not defined; try to  find some random position.
-            position, res = self.find_free_tile()
+            position, success = self.find_free_tile()
         else:
             # x, y are defined; check if position is empty.
             if self.is_empty(x, y):
                 # position is empty
-                position, res = [x, y], 0
+                position, success = [x, y], 0
             elif relocate:
                 # position is occupied, try to relocate as requested
-                position, res = self.find_free_tile()
+                position, success = self.find_free_tile()
             else:
                 # position is occupied and no relocation requested; FAIL.
-                res = 1
+                success = 1
         
-        if (res == 0):
+        if (success == 0):
             # The move is possible, proceed now.
             if (thing.position[0] != None and thing.position[1] != None):
                 # The Thing was already in the world; clear out old place.
@@ -250,7 +267,7 @@ class World:
             self.things[position[0], position[1]] = thing
             thing.position = position
 
-        return (res)
+        return (success)
 
     def is_empty(self, x, y):
         # Check if a given position is free
@@ -263,21 +280,21 @@ class World:
         found = self.is_empty(x, y)
 
         x0, y0 = x, y                   # Starting position to search from
-        res = 0                         # Fail condition (0: success; 1: board is full)
-        while not found and not (res == 1):
+        success = 0                         # Fail condition (0: success; 1: board is full)
+        while not found and not (success == 1):
             x = (x+1)%self.width        # Increment x not exceeding width
             if x == 0 :                 # When x is back to 0, increment y not exceeding height
                 y = (y+1)%self.height
             if self.is_empty(x, y):     # Check "success" condition
                 found = True
             elif (x, y) == (x0, y0):    # Check "fail" condition
-                res = 1
+                success = 1
 
-        return (x, y), res
+        return (x, y), success
 
     def step(self):
-        # Run step over all agents
-        for agent in self.agents:
+        # Run step over all "living" agents
+        for agent in filter(lambda a: a.energy > 0, self.agents):
             # request action from agent based on world state
             action = agent.choose_action(self)
             # resolve results of trying to execute action
@@ -312,7 +329,8 @@ class World:
         return (ask)
 
 ###############################################################
-# MAIN PROGRAM: code for TESTING purposes only
+# MAIN PROGRAM
+# code for TESTING purposes only
 
 if __name__ == '__main__':
     print("world.py is a module of Lil' ASCII Lab and has no real main module.")
