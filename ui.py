@@ -46,7 +46,8 @@ UI_def = {
     "min_ui_height":    12,     # Minimum height for the text interface, regardeless of board size
     "max_size":         100,    # Maximum size for width of height for the world (TBA: manage too big worlds)
     "header2_width":    6,      # Header space reserved for " LIVE ", "PAUSED", etc.
-    "tracking_width":   50,     # Width for the tracking space will be set up on the right.
+    "tracking_width":   60,     # Width for the tracking space will be set up on the right.
+    "tracking_right_column":    36,     # Column where the right section of the tracker starts.
     "name_length":      10,     # Maximum length displayed of agents' names.
     "window_bg":        BLACK,  # BG color of the full terminal window
     "header_fg":        WHITE + NORMAL, # FG color of the TITLE of the world
@@ -74,6 +75,7 @@ class UI:
         self.spc_str = " " * self.spc_len     # doubling columns for esthetic reasons
         self.extend_blocks = UI_def["extend_blocks"]
         self.tracker_width = UI_def["tracking_width"]
+        self.tracking_right_column = UI_def["tracking_right_column"]
         self.name_length = UI_def["name_length"]
 
         # UI layout dimensions
@@ -267,7 +269,8 @@ class UI:
             self.tracker.addstr("▲", fg_bright_color_pair)
         
         # Tracked agent: Other information
-        self.tracker.addstr(3, 2, "{:<12}{} ".format('AI:', str(tracked_agent.chosen_action)), fg_bright_color_pair)
+        #self.tracker.addstr(3, 2, "{:<12} {}{}".format('AI:', str(tracked_agent.chosen_action[0]), str(tracked_agent.chosen_action[1])), fg_bright_color_pair)
+        self.tracker.addstr(3, 2, "{:<12}{}".format('AI:', str(tracked_agent.chosen_action)), fg_bright_color_pair)
         self.tracker.addstr(4, 2, "{:<12}{} ".format('Latest:', 'N/A'), fg_bright_color_pair)
         self.tracker.addstr(5, 2, "{:<12}{} ".format('Carrying:', '[]'), fg_bright_color_pair)
         self.tracker.addstr(6, 2, "{:<12}{} ".format('Message:', '[]'), fg_bright_color_pair)
@@ -278,7 +281,7 @@ class UI:
         agents_list = self.world.agents[:self.tracker_height - 4] # Pick top of list, preserving 2 top rows + 2 bottom rows
         for agent in agents_list:
             agent_color_pair = self.pair(agent.color + agent.intensity, self.tracker_bg)
-            self.tracker.addstr(y, 28, agent.aspect, agent_color_pair)  # Approx. in the middle column
+            self.tracker.addstr(y, self.tracking_right_column, agent.aspect, agent_color_pair)
             self.tracker.addstr(" {:<11}".format(agent.name[:self.name_length]), fg_color_pair)
             self.tracker.addstr(" {:>6.2f}".format(agent.energy), fg_bright_color_pair)
             y += 1

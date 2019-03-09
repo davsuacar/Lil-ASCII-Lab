@@ -25,12 +25,22 @@ HI:
 -
 
 LO:
+Review tracker's layout (logo on top?, tracked agent below header?...)
+Add color to logo at program exit.
 Implement basic agent animation in "aspect" (2 or 3 looping chars).
 Handle resize terminal without exiting.
 Detect when resizing the terminal would exceed screen dimensions.
 Implement graphic orientation signalling on agents to show orientation (e.g. a blinking arrow [▲ ▶ ▼ ◀] on one adyacent tile).
+Tracking: Maintain agents' heatmaps (where they've been around).
 
 ## World Dynamics
+
+HI:
+-
+
+LO:
+Improve world generation with patterns of blocks.
+Consider creating "hole" blocks, causing instant death.
 
 TO BE DEFINED
 Action Space(s): discrete / continuous
@@ -40,6 +50,7 @@ State: Complete / incomplete information for agents.
 ## Overall features
 
 HI:
+Implement 
 Allow Pause, Stop, Play, FF (at different speeds: x1, x2, ...).
 In Fast-Forward mode, consider skipping frames drawing?
 
