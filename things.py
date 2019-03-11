@@ -12,38 +12,53 @@
 import ai
 import ui
 
-# Agent definition:
-#   number of instances to place
-#   type, i.e. its name
-#   aspect: one single Unicode character (e.g. "𝝮")
-#   color & intensity:  (see above)
-#   initial position (or RND). If more than one instance, it will be ignored.
-#   (energy-related settings:)
-#       initial energy assigned at start
-#       maximum energy the agent can acquire
-#       bite power, amount of energy the agent can take with one bite
-#       step_cost, i.e. energy consumption per step regardless of action
-#   senses: the function translating the environment into input for an agent's mind.
-#   mind: the cognitive function processing senses to output actions.
-Agents_def = (
-    (1, "wanderer", "⚉", ui.GREEN, ui.BRIGHT, [None, None], \
-        (110, 110.5, 5, -0.01), None, ai.wanderer),
-    (1, "Omi", "Ω", ui.BLUE, ui.BRIGHT, [None, None], \
-        (100, 110, 5, -1), None, None),
-    (2, "foe", "Д", ui.MAGENTA, ui.NORMAL, [None, None], \
-        (100, 110, 10, -1), None, None),
-    (3, "apple", "", ui.RED, ui.BRIGHT, [None, None], \
-        (20, 20, 0, -0.001), None, None),
-    (3, "star", "*", ui.YELLOW, ui.BRIGHT, [None, None], \
-        (30, 30, 0, 0), None, None),
+# Tiles definition:
+# Type of tile, aspect, color, intensity, position (not specified here).
+Tile_def = (
+    ("tile", "·", ui.BLACK, ui.BRIGHT, [None, None])
 )
 
-# Actions definition:
-# An action consists of a verb and some arguments, expressed between brackets here.
-Actions_def = (
-    None,       # None (None)   Passive action, it has no arguments.
-    "MOVE",     # MOVE (X, Y)   Moving to specified coordinates.
-    "FEED",     # FEED (X, Y)   Feed on Agent in coordinates.
+# Block definition: 
+#   Number of instances (or None for RND, based on world's width and % of randomness).
+#   Type, i.e. its name.
+#   Aspect: " " for a generic full block (which will be doubled to fit world's spacing).
+#           ONE single Unicode character, e.g. "#" (which will be doubled to fit world's spacing).
+#           TWO Unicode characters for specific styles (e.g. "[]", "▛▜", "◢◣").
+#   Color & intensity:  (see above).
+#   Position:   (a tuple, currently ignored).
+
+Blocks_def = (
+#    (None, "block", " ", ui.BLACK, ui.BRIGHT, [None, None]),
+#    (4, "block2", "▛▜", ui.BLUE, ui.NORMAL, [None, None]),
+    (10, "fence", "#", ui.BLACK, ui.BRIGHT, [None, None]),
+    (40, "stone", "▓", ui.BLACK, ui.BRIGHT, [None, None]),
+)
+
+# Agent definition:
+#   Number of instances to place.
+#   Type, i.e. its name.
+#   Aspect: one single Unicode character (e.g. "𝝮").
+#   Color & intensity:  (see above).
+#   Initial position (or RND). If more than one instance, it will be ignored.
+#   Energy-related settings:
+#       Initial energy assigned at start.
+#       Maximum energy the agent can acquire.
+#       Bite power, amount of energy the agent can take with one bite.
+#       Step_cost, i.e. energy consumed per step regardless of action.
+#       Move_cost, i.e. energy consumed for moving to an adjacent tile. 
+#   Senses: the function translating the environment into input for an agent's mind.
+#   Mind: the cognitive function processing senses to output actions.
+Agents_def = (
+    (1, "buggy", "⚉", ui.GREEN, ui.BRIGHT, [None, None], \
+        (110, 110.5, 5, -0.01, -1), None, ai.wanderer),
+    (1, "Omi", "Ω", ui.BLUE, ui.BRIGHT, [None, None], \
+        (100, 110, 5, -1, -0.1), None, ai.mindless),
+    (2, "foe", "Д", ui.MAGENTA, ui.NORMAL, [None, None], \
+        (100, 110, 10, -1, -0.1), None, None),
+    (3, "apple", "", ui.RED, ui.BRIGHT, [None, None], \
+        (20, 20, 0, -0.001, 0), None, None),
+    (3, "star", "*", ui.YELLOW, ui.BRIGHT, [None, None], \
+        (30, 30, 0, 0, 0), None, None),
 )
 
 ###############################################################
@@ -78,19 +93,20 @@ class Agent(Thing):
     num_agents = 0
     def __init__(self, a_def):
         # Initialize inherited and specific attributes
-        super().__init__(a_def[0], a_def[1], a_def[2], a_def[3], a_def[4])
+        super().__init__(name=a_def[0], aspect=a_def[1], color=a_def[2], intensity=a_def[3], position=a_def[4])
         self.energy     = a_def[5][0]
         self.max_energy = a_def[5][1]
         self.bite_power = a_def[5][2]
         self.step_cost  = a_def[5][3]
+        self.move_cost  = a_def[5][4]
         self.senses = a_def[6]
         self.mind = a_def[7]
         self.steps = 0
         # Initialize current_state, current_energy_delta and chosen_action
         self.current_state = None
         self.current_energy_delta = 0
-        self.chosen_action = None
-        # Update class variable
+        self.chosen_action = ai.No_action
+        self.chosen_action_success = True
         Agent.num_agents += 1
 
     def update_energy(self, delta):
@@ -109,7 +125,7 @@ class Agent(Thing):
     def interpret_state(self, world):
         # Extraction of the information available for the agent.
         # - Based on its 'senses'
-        # - TBA: other inputs (e.g. messages...)
+        # - TODO: other inputs (e.g. messages...)
 
         # Default: Complete information, the whole world is visible.
         if self.senses == None:
@@ -123,7 +139,7 @@ class Agent(Thing):
 
         # Default: No action
         if self.mind == None:
-            action = None
+            action = ai.No_action
         else:
             action = self.mind(self, world, state)
 
@@ -136,6 +152,7 @@ class Agent(Thing):
         # self.color = ...
         # self.position = ...
         self.update_energy(energy_delta)
+        self.chosen_action_success = success
 
         # Execute policy update (learning) based on:
         #   self.current_state (S_t)

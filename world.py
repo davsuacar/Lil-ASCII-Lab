@@ -28,40 +28,20 @@ World_def = {
     "n_blocks_rnd": 0.4,                # % of +/- randomness in number of blocks [0, 1]
     "max_steps":    None,               # How long to run the world ('None' for infinite loop)
     "chk_steps":    100,                 # How often user will be asked for quit/go-on ('None' = never ask)
-    "fps":          10,                 # Number of steps to run per second (TBA: full speed if 'None'?)
+    "fps":          2,                 # Number of steps to run per second (TODO: full speed if 'None'?)
     "random_seed":  None,               # Define seed to produce repeatable executions or None for random.
 }
 #   color:  from among 8 options (BLACK, BLUE, CYAN, GREEN, MAGENTA, RED, WHITE, YELLOW)
 #   intensity: NORMAL or BRIGHT
 
-# Tiles definition:
-# type of tile, aspect, color, intensity, position (not specified here)
-Tile_def = (
-    ("tile", "·", ui.BLACK, ui.BRIGHT, [None, None])
-)
 
-# Block definition: 
-#   number of instances (or None for RND, based on world's width and % of randomness)
-#   type, i.e. its name
-#   aspect: " " for a generic full block (which will be doubled to fit world's spacing)
-#           ONE single Unicode character, e.g. "#" (which will be doubled to fit world's spacing)
-#           TWO Unicode characters for specific styles (e.g. "[]", "▛▜", "◢◣")
-#   color & intensity:  (see above)
-#   position:   (a tuple, currently ignored)
-
-Blocks_def = (
-#    (None, "block", " ", ui.BLACK, ui.BRIGHT, [None, None]),
-#    (4, "block2", "▛▜", ui.BLUE, ui.NORMAL, [None, None]),
-    (10, "fence", "#", ui.BLACK, ui.BRIGHT, [None, None]),
-    (40, "stone", "▓", ui.BLACK, ui.BRIGHT, [None, None]),
-)
-
-# Simulation: The settings provided to the world.
+# Simulation defition:
+# The settings provided to the world.
 Simulation_def = (
-    World_def,          # some specific world definition
-    Tile_def,           # the tiles it will contain
-    Blocks_def,         # the blocks to put in it
-    things.Agents_def,  # the agents who will live in it (external module)
+    World_def,          # Some specific world definition.
+    things.Tile_def,    # The tiles it will contain.
+    things.Blocks_def,  # The blocks to put in it.
+    things.Agents_def,  # The agents who will live in it.
 )
 
 ###############################################################
@@ -97,34 +77,34 @@ class World:
         random.seed(seed)
 
         self.steps = 0
-        self.things = np.full((self.width, self.height), None) # create grid for agents and blocks
+        self.things = np.full((self.width, self.height), None) # Create grid for agents and blocks.
 
-        # put TILES on the ground
-        self.ground = np.full((self.width, self.height), None) # fill in the basis of the world.
+        # Put TILES on the ground.
+        self.ground = np.full((self.width, self.height), None) # Fill in the basis of the world.
         for x in range(self.width):
             for y in range(self.height):
                 # Create tile (position set in t_def[4] is ignored).
                 tile = things.Tile(t_def[0], t_def[1], t_def[2], t_def[3], [x, y])
                 self.ground[x, y] = tile           
 
-        # put AGENTS in the world
-        self.agents = []                # list of all types of agent in the world
-        self.tracked_agent = None       # the agent to track during simulation
-        for a in a_def:                 # loop over the types of agent defined
-            for i in range(a[0]):       # create the # of instances specified
-                # Create agent
-                agent = things.Agent(a[1:])    # definition of the agent
-                # Put agent in the world on requested position, relocating on colisions.
+        # Put AGENTS in the world.
+        self.agents = []                # List of all types of agent in the world.
+        self.tracked_agent = None       # The agent to track during simulation.
+        for a in a_def:                 # Loop over the types of agent defined.
+            for i in range(a[0]):       # Create the # of instances specified.
+                # Create agent as defined.
+                agent = things.Agent(a[1:])
+                # Put agent in the world on requested position, relocating on colisions (on failure, Agent is ignored).
                 _ = self.move_to(agent, agent.position[0], agent.position[1], relocate=True)
                 self.agents.append(agent)
                 if self.tracked_agent == None:
                     self.tracked_agent = agent
 
-        # put in some BLOCKS, # based on width
+        # Put in some BLOCKS, quantity based on width,
         self.blocks = []
-        for b in b_def:                 # list of all types of block in the world.
+        for b in b_def:                 # List of all types of block in the world.
             if(b[0] == None):           # Unspecified number of blocks.
-                n_random_blocks = (self.width * self.n_blocks_rnd) // 1 # abs. max variation
+                n_random_blocks = (self.width * self.n_blocks_rnd) // 1 # abs. max variation.
                 n_random_blocks = self.width + random.randint(-n_random_blocks, n_random_blocks)
             else:                       # Specified # of blocks.
                 n_random_blocks = b[0]
@@ -132,33 +112,34 @@ class World:
             n = 0
             while n < n_random_blocks:
                 block = things.Block(b[1], b[2], b[3], b[4], b[5])
-                _ = self.move_to(block)      # Put in random position
+                _ = self.move_to(block)      # Put in random position is possible (fail condition ignored).
                 self.blocks.append(block)
                 n += 1
 
     def move_to(self, thing, x = None, y = None, relocate = False):
+        # TODO: simplify interface to 'position' instead of x, y.
         # If x, y not defined, find a random free place and move the Thing there.
         # If x, y are defined,
         #       if not occupied, move a Thing to x, y;
         #       if occupied, relocate randomly if allowed by 'relocate', or fail otherwise.
-        # Fail condition (0: success; 1: fail)        
+        # Result of action: (True: success; False: fail).
         if x == None or y == None:
-            # x, y not defined; try to  find some random position.
+            # x, y are not defined; try to  find some random position.
             position, success = self.find_free_tile()
         else:
             # x, y are defined; check if position is empty.
-            if self.is_tile_empty(x, y):
-                # position is empty
-                position, success = [x, y], 0
+            if self.is_tile_empty([x, y]):
+                # Position is empty: success!
+                position, success = [x, y], True
             elif relocate:
-                # position is occupied, try to relocate as requested
+                # Position is occupied, try to relocate as requested.
                 position, success = self.find_free_tile()
             else:
-                # position is occupied and no relocation requested; FAIL.
-                success = 1
+                # Position is occupied and no relocation requested; FAIL.
+                success = False
         
-        if (success == 0):
-            # The move is possible, proceed now.
+        if success:
+            # The move is possible, relocate Thing.
             if (thing.position[0] != None and thing.position[1] != None):
                 # The Thing was already in the world; clear out old place.
                 self.things[thing.position[0], thing.position[1]] = None
@@ -167,8 +148,9 @@ class World:
 
         return (success)
 
-    def is_tile_empty(self, x, y):
-        # Check if a given position exists and is free
+    def is_tile_empty(self, position):
+        # Check if a given position exists within world's limits and is free.
+        x, y = position
         if (0 <= x <= self.width - 1) and (0 <= y <= self.height - 1):
             result = self.things[x, y] == None
         else:
@@ -176,64 +158,72 @@ class World:
         return result
 
     def find_free_tile(self):
-        # Try a random tile
+        # Try to find a tile that is empty in the world.
+        # Result of action: (True: success; False: fail).
+
+        # First, try a random tile.
         x = random.randint(0, self.width - 1)
         y = random.randint(0, self.height - 1)
-        found = self.is_tile_empty(x, y)
+        found = self.is_tile_empty([x, y])
 
-        x0, y0 = x, y                   # Starting position to search from
-        success = 0                         # Fail condition (0: success; 1: board is full)
-        while not found and not (success == 1):
+        x0, y0 = x, y                   # Starting position to search from.
+        success = True
+        while not found and success:
             x = (x+1)%self.width        # Increment x not exceeding width
             if x == 0 :                 # When x is back to 0, increment y not exceeding height
                 y = (y+1)%self.height
-            if self.is_tile_empty(x, y):     # Check "success" condition
+            if self.is_tile_empty([x, y]):     # Check "success" condition
                 found = True
-            elif (x, y) == (x0, y0):    # Check "fail" condition
-                success = 1
+            elif (x, y) == (x0, y0):    # Failed if loop over the world is complete.
+                success = False
 
         return (x, y), success
 
-    def get_adjacent_empty_tiles(self, x0, y0):
+    def get_adjacent_empty_tiles(self, position):
         # Return a list with all adjacent empty tiles, respecting world's borders
+        x0, y0 = position
         tiles = []
         for x_inc in (-1, 0, 1):
             for y_inc in (-1, 0, 1):
                 if (x_inc, y_inc) != (0, 0):  # Skipping tile on which agent stands
-                    if self.is_tile_empty(x0 + x_inc, y0 + y_inc):
+                    if self.is_tile_empty([x0 + x_inc, y0 + y_inc]):
                         tiles.append((x0 + x_inc, y0 + y_inc))
                         
         return tiles
 
-    def find_free_adjacent_tile(self, x0, y0):
-        # TBA
-        return False, x, y
+    def find_free_adjacent_tile(self, position):
+        # TODO
+        x0, y0 = position
+        return False, position
 
     def step(self):
-        # Run step over all "living" agents
+        # Run step over all "living" agents.
         for agent in filter(lambda a: a.energy > 0, self.agents):
-            # request action from agent based on world state
+            # Request action from agent based on world state.
             action = agent.choose_action(world = self)
-            # resolve results of trying to execute action
+            # Resolve results of trying to execute action.
             success, energy_delta = self.execute_action(agent, action)
-            # Set new position, reward, other internal information
+            # Set new position, reward, other internal information.
             agent.update(action, success, energy_delta)
 
-        # update the world's info
+        # Update the world's info
         self.agents.sort(key = lambda x: x.energy, reverse=True)
         self.steps +=1
 
     def execute_action(self, agent, action):
-        # Check if the action is feasible and execute it returning results
-        if action == None:
+        # Check if the action is feasible and execute it returning results.
+        if action[0] == "None":
+            pass
             success = True
             energy_delta = 0
         elif action[0] == "MOVE":
-            success = True      # TBA: Check move is feasible, handling exceptions.
-            energy_delta = 0    # TBA: Discount energy spent on moving!
-            self.move_to(agent, x=action[1][0], y=action[1][1])
+            success = self.move_to(agent,\
+                x=agent.position[0]+action[1][0],\
+                y=agent.position[1]+action[1][1])
+            if success: energy_delta = agent.move_cost
+            else:       energy_delta = 0 # TODO: Penalize collisions?
         else:
-            # TBA: handle unkown actions!
+            # TODO: Handle unkown actions!
             success = True
             energy_delta = 0
             
