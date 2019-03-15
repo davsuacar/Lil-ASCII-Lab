@@ -44,13 +44,13 @@ Blocks_def = (
 #       Initial energy assigned at start.
 #       Maximum energy the agent can acquire.
 #       Bite power, amount of energy the agent can take with one bite.
-#       Step_cost, i.e. energy consumed per step regardless of action.
+#       Step_cost, i.e. energy consumed per world step regardless of action.
 #       Move_cost, i.e. energy consumed for moving to an adjacent tile. 
 #   Senses: the function translating the environment into input for an agent's mind.
 #   Mind: the cognitive function processing senses to output actions.
 Agents_def = (
     (1, "buggy", "⚉", ui.GREEN, ui.BRIGHT, [None, None], \
-        (110, 110.5, 5, -0.01, -1), None, ai.wanderer),
+        (100, 110, 5, -0.1, -1), None, ai.wanderer),
     (1, "Omi", "Ω", ui.BLUE, ui.BRIGHT, [None, None], \
         (100, 110, 5, -1, -0.1), None, ai.mindless),
     (2, "foe", "Д", ui.MAGENTA, ui.NORMAL, [None, None], \
@@ -111,8 +111,10 @@ class Agent(Thing):
 
     def update_energy(self, delta):
         # Keep within 0 and agent's max_energy
-        self.current_energy_delta = delta
+        prev_energy = self.energy
         self.energy = max(min(self.energy + delta, self.max_energy), 0)
+        self.current_energy_delta = self.energy - prev_energy
+        return(self.current_energy_delta)
 
     def choose_action(self, world):
         # First, update agent's interpretation of the world (its current_state)
@@ -145,16 +147,15 @@ class Agent(Thing):
 
         return action
 
-    def update(self, action, success, energy_delta):
-        # Update state of agent after trying some action
-        # No moves or anything for now...
-        # self.aspect = ...
-        # self.color = ...
-        # self.position = ...
-        self.update_energy(energy_delta)
+    def update(self, action, success, action_energy_delta):
+        # Update state of agent after trying some action.
+        # TODO: self.aspect = ...
+        # TODO: self.color = ...
+        
+        _ = self.update_energy(action_energy_delta)
         self.chosen_action_success = success
 
-        # Execute policy update (learning) based on:
+        # TODO: Execute policy update (learning) based on:
         #   self.current_state (S_t)
         #   self.current_energy_delta (r_t)
         #   self.chosen_action (A_t)

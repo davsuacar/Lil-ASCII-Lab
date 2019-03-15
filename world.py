@@ -27,7 +27,7 @@ World_def = {
     "bg_intensity": ui.NORMAL,          # background intensity (NORMAL or BRIGHT)
     "n_blocks_rnd": 0.4,                # % of +/- randomness in number of blocks [0, 1]
     "max_steps":    None,               # How long to run the world ('None' for infinite loop)
-    "chk_steps":    100,                 # How often user will be asked for quit/go-on ('None' = never ask)
+    "chk_steps":    None,                 # How often user will be asked for quit/go-on ('None' = never ask)
     "fps":          2,                 # Number of steps to run per second (TODO: full speed if 'None'?)
     "random_seed":  None,               # Define seed to produce repeatable executions or None for random.
 }
@@ -95,7 +95,7 @@ class World:
                 # Create agent as defined.
                 agent = things.Agent(a[1:])
                 # Put agent in the world on requested position, relocating on colisions (on failure, Agent is ignored).
-                _ = self.move_to(agent, agent.position[0], agent.position[1], relocate=True)
+                _ = self.place_at(agent, agent.position, relocate=True)
                 self.agents.append(agent)
                 if self.tracked_agent == None:
                     self.tracked_agent = agent
@@ -112,30 +112,29 @@ class World:
             n = 0
             while n < n_random_blocks:
                 block = things.Block(b[1], b[2], b[3], b[4], b[5])
-                _ = self.move_to(block)      # Put in random position is possible (fail condition ignored).
+                _ = self.place_at(block)      # Put in random position if possible (fail condition ignored).
                 self.blocks.append(block)
                 n += 1
 
-    def move_to(self, thing, x = None, y = None, relocate = False):
-        # TODO: simplify interface to 'position' instead of x, y.
-        # If x, y not defined, find a random free place and move the Thing there.
-        # If x, y are defined,
-        #       if not occupied, move a Thing to x, y;
+    def place_at(self, thing, position = [None, None], relocate = False):
+        # If position is not defined, find a random free place and move the Thing there.
+        # If position is defined,
+        #       if not occupied, move a Thing to position;
         #       if occupied, relocate randomly if allowed by 'relocate', or fail otherwise.
         # Result of action: (True: success; False: fail).
-        if x == None or y == None:
-            # x, y are not defined; try to  find some random position.
+        if position == [None, None]:
+            # position not defined; try to find a random one.
             position, success = self.find_free_tile()
         else:
-            # x, y are defined; check if position is empty.
-            if self.is_tile_empty([x, y]):
-                # Position is empty: success!
-                position, success = [x, y], True
+            # position is defined; check if it is empty.
+            if self.tile_is_empty(position):
+                # position is empty: success!
+                success = True
             elif relocate:
-                # Position is occupied, try to relocate as requested.
+                # position is occupied, try to relocate as requested.
                 position, success = self.find_free_tile()
             else:
-                # Position is occupied and no relocation requested; FAIL.
+                # position is occupied and no relocation requested; FAIL.
                 success = False
         
         if success:
@@ -146,13 +145,22 @@ class World:
             self.things[position[0], position[1]] = thing
             thing.position = position
 
-        return (success)
+        return success
 
-    def is_tile_empty(self, position):
+    def tile_is_empty(self, position):
         # Check if a given position exists within world's limits and is free.
         x, y = position
         if (0 <= x <= self.width - 1) and (0 <= y <= self.height - 1):
             result = self.things[x, y] == None
+        else:
+            result = False
+        return result
+
+    def tile_with_agent(self, position):
+        # Check if a given position exists within world's limits and has an agent on it.
+        x, y = position
+        if (0 <= x <= self.width - 1) and (0 <= y <= self.height - 1):
+            result = isinstance(self.things[x, y], things.Agent)
         else:
             result = False
         return result
@@ -164,7 +172,7 @@ class World:
         # First, try a random tile.
         x = random.randint(0, self.width - 1)
         y = random.randint(0, self.height - 1)
-        found = self.is_tile_empty([x, y])
+        found = self.tile_is_empty([x, y])
 
         x0, y0 = x, y                   # Starting position to search from.
         success = True
@@ -172,12 +180,12 @@ class World:
             x = (x+1)%self.width        # Increment x not exceeding width
             if x == 0 :                 # When x is back to 0, increment y not exceeding height
                 y = (y+1)%self.height
-            if self.is_tile_empty([x, y]):     # Check "success" condition
+            if self.tile_is_empty([x, y]):     # Check "success" condition
                 found = True
             elif (x, y) == (x0, y0):    # Failed if loop over the world is complete.
                 success = False
 
-        return (x, y), success
+        return [x, y], success
 
     def get_adjacent_empty_tiles(self, position):
         # Return a list with all adjacent empty tiles, respecting world's borders
@@ -186,7 +194,7 @@ class World:
         for x_inc in (-1, 0, 1):
             for y_inc in (-1, 0, 1):
                 if (x_inc, y_inc) != (0, 0):  # Skipping tile on which agent stands
-                    if self.is_tile_empty([x0 + x_inc, y0 + y_inc]):
+                    if self.tile_is_empty([x0 + x_inc, y0 + y_inc]):
                         tiles.append((x0 + x_inc, y0 + y_inc))
                         
         return tiles
@@ -201,7 +209,7 @@ class World:
         for agent in filter(lambda a: a.energy > 0, self.agents):
             # Request action from agent based on world state.
             action = agent.choose_action(world = self)
-            # Resolve results of trying to execute action.
+            # Try to execute action.
             success, energy_delta = self.execute_action(agent, action)
             # Set new position, reward, other internal information.
             agent.update(action, success, energy_delta)
@@ -212,22 +220,45 @@ class World:
 
     def execute_action(self, agent, action):
         # Check if the action is feasible and execute it returning results.
-        if action[0] == "None":
-            pass
+        action_type, action_arguments, action_energy_ratio = action
+        # Calculate energy cost IF action is actually made.
+        action_delta = agent.move_cost * action_energy_ratio
+
+        if action_delta > agent.energy:
+            # Not enough energy for the move.
+            success = False
+            action_delta = 0
+
+        elif action_type == "None":
+            # Rest action
             success = True
-            energy_delta = 0
-        elif action[0] == "MOVE":
-            success = self.move_to(agent,\
-                x=agent.position[0]+action[1][0],\
-                y=agent.position[1]+action[1][1])
-            if success: energy_delta = agent.move_cost
-            else:       energy_delta = 0 # TODO: Penalize collisions?
+
+        elif action_type == "MOVE":
+            # Check destination tile is free.
+            success = self.place_at(agent,\
+                [agent.position[0]+action_arguments[0],\
+                agent.position[1]+action_arguments[1]]
+                )
+            if not success: action_delta = 0
+            # TODO: Penalize collisions through energy_delta?
+
+        elif action_type == "FEED":
+            prey = self.things[agent.position[0]+action_arguments[0],\
+                agent.position[1]+action_arguments[1]]
+            if prey != None:
+                # Take energy from prey (limited by prey's energy).
+                energy_taken = prey.update_energy(-agent.bite_power)
+                action_delta += - energy_taken
+                success = True
+            else:
+                success = False
+                action_delta = 0
+
         else:
-            # TODO: Handle unkown actions!
-            success = True
-            energy_delta = 0
+            raise Exception('Invalid action type passed: {}.'.format(action_type))
             
-        return success, energy_delta + agent.step_cost
+        energy_delta = action_delta + agent.step_cost
+        return success, energy_delta
 
     def is_end_loop(self):
         # Check if the world's loop has come to an end.
@@ -252,6 +283,3 @@ class World:
 if __name__ == '__main__':
     print("world.py is a module of Lil' ASCII Lab and has no real main module.")
     _ = input("Press to exit...")
-
-
-

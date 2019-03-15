@@ -3,7 +3,6 @@
 ## AI
 
 HI:
-Implement a basic random AI (e.g. random moves / still, with RND inertia).
 Implement dynamics of basic attributes: inventory.
 
 LO:
@@ -19,13 +18,17 @@ Perception (inputs):
 * Other sensors (environment conditions, e.g. smell, lightness, rain, temperature...).
 * Messages from other agents.
 
-## Interface
+## UI - User Interface
 
 HI:
--
+Tracker: Signal agent's about to die (blinking?).
+Tracker: Energy increases; review up/down arrows for energy; it's "down" all the time.
+Tracker: Differentiate agents' names.
+Tracker: Show AI and Senses identifiers.
 
 LO:
-Review tracker's layout (logo on top?, tracked agent below header?...)
+Tracker (aesthetics): Review tracker's layout (logo on top?, tracked agent below header?...).
+World.highlighted_agents: ALL: make agents more visible with highlighted BG?, TRACKED: only the tracked one; None: Current implementation.
 Add color to logo at program exit.
 Implement basic agent animation in "aspect" (2 or 3 looping chars).
 Handle resize terminal without exiting.
@@ -36,7 +39,7 @@ Tracking: Maintain agents' heatmaps (where they've been around).
 ## World Dynamics
 
 HI:
--
+Decouple UI / AI refresh rates, e.g. one AI step every 5 UI steps. 
 
 LO:
 Improve world generation with patterns of blocks.
@@ -62,16 +65,20 @@ Add arguments to main program (module argparse).
 
 # Available Features (add to README.md)
 
+AI:
+Implement a basic random AI (e.g. random moves / still, with RND inertia).
+Implement "EAT" action.
+
 World dynamics:
 Implement dynamics of basic attributes: energy (initialization, consumption, death).
 Define dynamics at death. Once energy is 0, AI is no longer active.
-Add ncurses terminal support for b&w, 8 or 16 colors.
 Implement synchronized steps, e.g. 12 fps, 24 fps.
 Reproducibility: manage random seed at start (generate, store).
 Allow Fast-Forward execution (off-clock).
 
 
 UI:
+Add ncurses terminal support for b&w, 8 or 16 colors.
 Handle sizes not fitting on terminal:
 Overall UI:
 - excessive board width
