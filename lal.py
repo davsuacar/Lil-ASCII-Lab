@@ -3,21 +3,21 @@
 # Main world simulation loop
 
 ###############################################################
-# IMPORT
 
-# libraries
-from curses import wrapper
 import time
-import argparse
-
-# modules
 import world as w
 import ui
+from curses import wrapper
 
-###############################################################
-# MAIN PROGRAM
 
 def main_loop(stdscr, world):
+    '''
+    
+    :param stdscr: 
+    :param world: 
+    :return: 
+    '''
+
     # Initialize UI
     u_i = ui.UI(stdscr, world)
 
@@ -31,9 +31,9 @@ def main_loop(stdscr, world):
         end_loop = world.is_end_loop()  # Check max #steps
         if not end_loop:
             # Check user if required
-            if (world.time_to_ask()):
+            if world.time_to_ask():
                 user_input = u_i.ask("Continue? (y/n) ")
-                end_loop = (user_input.lower() != "y")
+                end_loop = user_input.lower() != "y"
             # Evolve world by one time-fixed step
             if not end_loop:
                 t_start = time.time()
