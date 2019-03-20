@@ -8,6 +8,7 @@
 # libraries
 from curses import wrapper
 import time
+import argparse
 
 # modules
 import world as w
@@ -33,7 +34,7 @@ def main_loop(stdscr, world):
             if (world.time_to_ask()):
                 user_input = u_i.ask("Continue? (y/n) ")
                 end_loop = (user_input.lower() != "y")
-            # Evolve world by one regular step
+            # Evolve world by one time-fixed step
             if not end_loop:
                 t_start = time.time()
                 world.step()

@@ -36,13 +36,15 @@ NORMAL  = 0                 # No offset for normal colors (1..8).
 BRIGHT  = 8                 # Offset to get brighter colors, assuming COLORS >= 16 .
 MAX_COLORS = 16             # The number of predefined colors to try to use.
 
+LOW_ENERGY_THRESHOLD = 0.20 # Below this % energy is displayed as dangerously low.
+
 # Output settings: Define how I/O will happen:
 UI_def = {
-    "resize_term":      False,  # Flag to allows resizing the actual terminal where program runs.
+    "resize_term":      True,  # Flag to allows resizing the actual terminal where program runs.
     "spacing":          1,      # Number of 'spc' chars to concatenate at the right of every tile (for an even vert/horiz aspect ratio).
     "extend_blocks":    False,   # Whether blocks will be doubled to cover "holes".
     "min_ui_width":     20,     # Minimum width for the text interface, regardless of board size.
-    "min_ui_height":    12,     # Minimum height for the text interface, regardeless of board size.
+    "min_ui_height":    15,     # Minimum height for the text interface, regardeless of board size.
     "max_size":         100,    # Maximum size for width of height for the world (TODO: manage too big worlds).
     "header2_width":    6,      # Header space reserved for " LIVE ", "PAUSED", etc.
     "tracking_width":   60,     # Width for the tracking space will be set up on the right.
@@ -193,7 +195,7 @@ class UI:
         # Resize terminal.
         os.system("printf '\e[8;{};{}t'".format(rows, columns))
     
-    def draw_title(self, color_pair):
+    def draw_header(self, color_pair):
         # Header: put world's name at top left.
         title = " " + self.world.name + " "
         fill = " " * max(0, self.board_width - len(title))
@@ -201,7 +203,7 @@ class UI:
         self.header.addnstr(0, 0, title+fill, self.board_width - self.header2_width, color_pair | curses.A_BOLD)
         self.header.noutrefresh()
 
-    def draw_title2(self, text, color_pair):
+    def draw_header2(self, text, color_pair):
         # Header: put text at top right.
         title2 = (text.center(self.header2_width))[:self.header2_width]
         self.header.addstr(0, self.board_width - self.header2_width, title2, color_pair)
@@ -218,7 +220,7 @@ class UI:
         # Ask user for input on footer zone.
         # But first, signal the simulation is paused.
         pair = self.pair(self.header_fg, self.header_bg2)
-        self.draw_title2("PAUSED", pair)
+        self.draw_header2("PAUSED", pair)
 
         curses.flushinp() # Throw away any typeahead not yet processed.
         self.footer.erase() # Erase footer window.
@@ -228,7 +230,51 @@ class UI:
         answer = self.footer.getkey()
         return answer
 
-    def refresh_tracker(self):
+    def draw_board(self):
+        # Update board state.
+        x_tracked, y_tracked = self.world.tracked_agent.position
+
+        for y in range(self.world.height -1, -1, -1):
+            x_screen = 0
+            for x in range(self.world.width):
+                thing = self.world.things[x, y]
+                if thing == None:
+                    # Emtpy TILE here. May be highlighted.
+                    tile = self.world.ground[x, y]
+                    text = tile.aspect + self.spc_str
+                    if (x_tracked - 1 <= x <= x_tracked + 1) and (y_tracked - 1 <= y <= y_tracked + 1):
+                        color, intensity = WHITE, BRIGHT
+                    else:
+                        color, intensity = tile.color, tile.intensity
+                    pair = self.pair(color + intensity, self.world.bg_color + self.world.bg_intensity)
+                    self.board.addstr(self.world.height - y - 1, x_screen, text, pair | curses.A_NORMAL)
+                else:
+                    # Some AGENT/BLOCK here.
+                    if thing in self.world.blocks:
+                        # A BLOCK:
+                        t_aspect = thing.aspect
+                        if t_aspect[0]==" ": # Generic full block style.
+                            pair = self.pair(thing.color + thing.intensity, thing.color + thing.intensity)
+                        else:
+                            pair = self.pair(thing.color + thing.intensity, self.world.bg_color + self.world.bg_intensity)
+                        # Display the block.
+                        self.board.addstr(self.world.height - y - 1, x_screen, t_aspect, pair | curses.A_BOLD)
+                    else:
+                        # An AGENT:
+                        if thing.current_energy_delta > 0:
+                            pair = self.pair(thing.color + thing.intensity, thing.color + NORMAL)
+                        else:
+                            pair = self.pair(thing.color + thing.intensity, self.world.bg_color + self.world.bg_intensity)
+                        if 0 < thing.energy < thing.max_energy * LOW_ENERGY_THRESHOLD :
+                            pair = pair | curses.A_BLINK
+                        # Display the agent and the required blanks right after.
+                        self.board.addstr(self.world.height - y - 1, x_screen, thing.aspect, pair | curses.A_BOLD)
+                        pair = self.pair(thing.color + thing.intensity, self.world.bg_color + self.world.bg_intensity)
+                        self.board.addstr(self.spc_str, pair)
+                x_screen += 1 + self.spc_len # X must follow specific spacing.
+        self.board.noutrefresh()
+
+    def draw_tracker(self):
         # Define colors.
         fg_color_pair           = self.pair(self.tracker_fg, self.tracker_bg)
         fg_bright_color_pair    = self.pair(self.tracker_fg + BRIGHT, self.tracker_bg)
@@ -259,38 +305,59 @@ class UI:
         self.tracker.addstr(" {}% ]".format(energy_percent), fg_bright_color_pair)
 
         # Tracked agent: energy.
-        self.tracker.addstr(2, 2, "{:<12}".format('Energy:'), fg_bright_color_pair)
-        self.tracker.addstr("{:.1f}".format(tracked_agent.energy), fg_bright_color_pair)
+        self.tracker.addstr(2, 2, "{:<14}".format('Energy:'), fg_color_pair)
+        if tracked_agent.energy > tracked_agent.max_energy * LOW_ENERGY_THRESHOLD :
+            pair = fg_bright_color_pair
+        else:
+            pair = bright_red_color_pair
+        self.tracker.addstr("{:.1f}".format(tracked_agent.energy), pair)
         self.tracker.addstr("/{:.0f} ".format(tracked_agent.max_energy), fg_bright_color_pair)
         if tracked_agent.current_energy_delta < 0:
-            self.tracker.addstr("▼", bright_red_color_pair)
+            self.tracker.addstr("{:.1f}".format(tracked_agent.current_energy_delta), bright_red_color_pair)
         elif tracked_agent.current_energy_delta > 0:
-            self.tracker.addstr("▲", fg_bright_color_pair)
+            self.tracker.addstr("+{:.1f}".format(tracked_agent.current_energy_delta), fg_bright_color_pair)
         
         # Tracked agent: Other information.
+        self.tracker.addstr(3, 2, "{:<14}".format("AI:"), fg_color_pair)
+        self.tracker.addstr("{}".format(tracked_agent.mind.__name__), fg_bright_color_pair)
+        self.tracker.addstr(4, 2, "{:<14}".format(" "), fg_color_pair)
+        self.tracker.addstr("{}".format(tracked_agent.senses.__name__), fg_bright_color_pair)        
+        
         if tracked_agent.chosen_action_success: pair = fg_bright_color_pair
         else: pair = bright_red_color_pair
-        self.tracker.addstr(3, 2, "{:<12}".format('AI:'), fg_bright_color_pair)
+        self.tracker.addstr(6, 2, "{:<14}".format('Action:'), fg_color_pair)
         self.tracker.addstr("{} {}".format(tracked_agent.chosen_action[0], tracked_agent.chosen_action[1]), pair)
-        self.tracker.addstr(4, 2, "{:<12}{} ".format('Latest:', 'N/A'), fg_bright_color_pair)
-        self.tracker.addstr(5, 2, "{:<12}{} ".format('Carrying:', '[]'), fg_bright_color_pair)
-        self.tracker.addstr(6, 2, "{:<12}{} ".format('Message:', '[]'), fg_bright_color_pair)
-        self.tracker.addstr(7, 2, "{:<12}{} ".format('Explored:', 'N/A'), fg_bright_color_pair)
+        
+        self.tracker.addstr(7, 2, "{:<14}".format('Carrying:'), fg_color_pair)
+        self.tracker.addstr("{}".format('[]'), fg_bright_color_pair)
+        self.tracker.addstr(8, 2, "{:<14}".format('Message:'), fg_color_pair)
+        self.tracker.addstr("{}".format('[]'), fg_bright_color_pair)
+        self.tracker.addstr(9, 2, "{:<14}".format('Explored:'), fg_color_pair)
+        self.tracker.addstr("{}".format('-'), fg_bright_color_pair)
+        self.tracker.addstr(10, 2, "{:<14}".format('Plc_holdr:'), fg_color_pair)
+        self.tracker.addstr("{}".format('012345678901234567890123456789'), fg_bright_color_pair)
 
         # Rest of Things (agents, blocks?).
         y = 2 # Initial line.
         agents_list = self.world.agents[:self.tracker_height - 4] # Pick top of list, preserving 2 top rows + 2 bottom rows.
         for agent in agents_list:
             agent_color_pair = self.pair(agent.color + agent.intensity, self.tracker_bg)
-            self.tracker.addstr(y, self.tracking_right_column, agent.aspect, agent_color_pair)
+            if agent == tracked_agent: prefix = "▶ "
+            else: prefix = "  "
+            self.tracker.addstr(y, self.tracking_right_column, prefix, fg_bright_color_pair)
+            self.tracker.addstr(agent.aspect, agent_color_pair)
             self.tracker.addstr(" {:<11}".format(agent.name[:self.name_length]), fg_color_pair)
-            self.tracker.addstr(" {:>6.2f}".format(agent.energy), fg_bright_color_pair)
+            if agent.energy > agent.max_energy * LOW_ENERGY_THRESHOLD :
+                pair = fg_bright_color_pair
+            else:
+                pair = bright_red_color_pair
+            self.tracker.addstr(" {:>6.2f}".format(agent.energy), pair)
             y += 1
 
         # Tracker's footer.
         time_run = str(datetime.timedelta( \
             seconds = (self.world.steps * self.world.spf)//1))
-        left_line = " Step {} ({}) ".format(self.world.steps, time_run)
+        left_line = " Step {:,} ({}) ".format(self.world.steps, time_run)
         right_line = " Lil' ASCII Lab 0.1 "
         self.tracker.addstr(self.tracker_height - 1, 1, left_line, fg_bright_color_pair | curses.A_REVERSE)
         self.tracker.addstr(self.tracker_height - 1, self.tracker_width -1 -len(right_line), right_line, fg_bright_color_pair)
@@ -304,45 +371,17 @@ class UI:
         # Erase screen first.
         self.stdscr.erase()
 
-        # HEADER: Title on top.
-        pair = self.pair(self.header_fg, self.header_bg)
-        self.draw_title(pair)
-        pair = self.pair(self.header_fg, self.header_bg2)
-        self.draw_title2("LIVE", pair)
+        # HEADER: Title on top + status.
+        self.draw_header(self.pair(self.header_fg, self.header_bg))
+        self.draw_header2("LIVE", self.pair(self.header_fg, self.header_bg2))
 
         # BOARD: Update world representation.
-        for y in range(self.world.height -1, -1, -1):
-            x_screen = 0
-            for x in range(self.world.width):
-                thing = self.world.things[x, y]
-                if thing == None:
-                    # Emtpy TILE here.
-                    tile = self.world.ground[x, y]
-                    text = tile.aspect + self.spc_str
-                    pair = self.pair(tile.color + tile.intensity, self.world.bg_color + self.world.bg_intensity)
-                    self.board.addstr(self.world.height - y - 1, x_screen, text, pair | curses.A_NORMAL)
-                else:
-                    # Some AGENT/BLOCK here.
-                    if thing in self.world.blocks:
-                        # A BLOCK:
-                        t_aspect = thing.aspect
-                        if t_aspect[0]==" ": # Generic full block style.
-                            pair = self.pair(thing.color + thing.intensity, thing.color + thing.intensity)
-                        else:
-                            pair = self.pair(thing.color + thing.intensity, self.world.bg_color + self.world.bg_intensity)
-                    else:
-                        # An AGENT:
-                        t_aspect = thing.aspect + self.spc_str
-                        pair = self.pair(thing.color + thing.intensity, self.world.bg_color + self.world.bg_intensity)
-                    # Display the agent/block.
-                    self.board.addstr(self.world.height - y - 1, x_screen, t_aspect, pair | curses.A_BOLD)
-                x_screen += 1 + self.spc_len # X must follow specific spacing.
-        self.board.noutrefresh()
+        self.draw_board()
 
         # TRACKER: Update current state of the world.
-        self.refresh_tracker()
+        self.draw_tracker()
 
-        # FOOTER: N/A for now.
+        # FOOTER: Update message at bottom.
         self.say("(running...)")
 
         # Refresh screen.
@@ -407,5 +446,5 @@ def main(scr):
 if __name__ == '__main__':
     # Call as main module generates a series of tests on the terminal.
     print("ui.py is a module of Lil' ASCII Lab.")
-    _ = input("Press to test some ncurses colors...")
+    _ = input("Press to test some of 'ncurses' colors...")
     wrapper(main)

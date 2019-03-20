@@ -22,7 +22,7 @@ import ui
 World_def = {
     "name":         "Random Blox",
     "width":        20,                 # x from 0 to width - 1
-    "height":       14,                 # y from 0 to height - 1
+    "height":       15,                 # y from 0 to height - 1
     "bg_color":     ui.BLACK,           # background color
     "bg_intensity": ui.NORMAL,          # background intensity (NORMAL or BRIGHT)
     "n_blocks_rnd": 0.4,                # % of +/- randomness in number of blocks [0, 1]
@@ -36,7 +36,7 @@ World_def = {
 
 
 # Simulation defition:
-# The settings provided to the world.
+# Theses are the settings provided to the world:
 Simulation_def = (
     World_def,          # Some specific world definition.
     things.Tile_def,    # The tiles it will contain.
@@ -91,9 +91,12 @@ class World:
         self.agents = []                # List of all types of agent in the world.
         self.tracked_agent = None       # The agent to track during simulation.
         for a in a_def:                 # Loop over the types of agent defined.
+            single_instance = a[0] == 1
             for i in range(a[0]):       # Create the # of instances specified.
                 # Create agent as defined.
-                agent = things.Agent(a[1:])
+                if single_instance: agent_suffix = None
+                else: agent_suffix = i
+                agent = things.Agent(a[1:], agent_suffix)
                 # Put agent in the world on requested position, relocating on colisions (on failure, Agent is ignored).
                 _ = self.place_at(agent, agent.position, relocate=True)
                 self.agents.append(agent)
@@ -249,7 +252,7 @@ class World:
                 # Take energy from prey (limited by prey's energy).
                 energy_taken = prey.update_energy(-agent.bite_power)
                 action_delta += - energy_taken
-                success = True
+                success = action_delta > 0
             else:
                 success = False
                 action_delta = 0

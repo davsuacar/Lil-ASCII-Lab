@@ -62,6 +62,10 @@ def obtain_possible_bites(world, position, moves_delta_list):
 # Minds: Senses
 #   TODO
 
+def default_senses(agent, world = None):
+    # Void Senses function, returning the world passed.
+    return(world)
+
 ###############################################################
 # Minds: Policies
 # 
