@@ -55,7 +55,7 @@ UI_def = {
     "header_fg": WHITE + NORMAL,  # FG color of the TITLE of the world.
     "header_bg": BLUE + NORMAL,  # BG color of the TITLE of the world.
     "header_bg2": RED + BRIGHT,  # BG color of the shorter special field.
-    "header_bg3": MAGENTA + BRIGHT,  # BG color of the shorter special field.
+    "header_bg3": MAGENTA + NORMAL,  # Special BG color of the shorter special field.
     "footer_fg": BLACK + NORMAL,  # FG color of the FOOTER.
     "footer_bg": WHITE + NORMAL,  # BG color of the FOOTER.
     "tracker_fg": GREEN,  # FG color of the Tracker window.
@@ -226,7 +226,7 @@ class UI:
     def ask(self, question):
         # Ask user for input on footer zone.
         # But first, signal the simulation is paused.
-        pair = self.pair(self.header_fg, self.header_bg2)
+        pair = self.pair(self.header_fg, self.header_bg3)
         self.draw_header2("PAUSED", pair)
 
         curses.flushinp()  # Throw away any typeahead not yet processed.
@@ -248,7 +248,7 @@ class UI:
         # curses.flushinp()  # Throw away any typeahead not yet processed.
         self.footer.erase()  # Erase footer window.
         pair = self.pair(self.footer_fg, self.footer_bg)
-        self.footer.addnstr(0, 0, menu_text.ljust(self.board_width - 1),
+        self.footer.addnstr(0, 0, menu_text.center(self.board_width - 1),
                             self.footer.getmaxyx()[1] - 2,
                             pair)
         self.footer.refresh()
@@ -388,7 +388,7 @@ class UI:
 
         # Tracker's footer.
         time_run = str(datetime.timedelta(
-            seconds=(self.world.steps * self.world.spf) // 1))
+            seconds=(self.world.steps * self.world.original_spf) // 1))
         left_line = " Step {:,} ({}) ".format(self.world.steps, time_run)
         right_line = " Lil' ASCII Lab 0.1 "
         self.tracker.addstr(self.tracker_height - 1, 1, left_line, fg_bright_color_pair | curses.A_REVERSE)
@@ -418,12 +418,12 @@ class UI:
         # FOOTER:
         if self.world.world_paused:
             # Ask user whether to go on.
-            answer = self.ask("Continue? (y/n) ")
-            user_break = answer not in ["Y", "y"]
+            answer = self.ask("Press to continue... (Q to quit) ")
+            user_break = answer in ["Q", "q"]
             self.world.world_paused = False
         else:
             # Update keyboard options at bottom. Get keyboard input.
-            key = self.get_key_pressed("Speed(< >) Stop(SPC) Select(TAB)")
+            key = self.get_key_pressed("Speed(< ^ >) Stop(SPC) Select(TAB)")
             self.world.process_key_stroke(key)
             user_break = False
 

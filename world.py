@@ -54,8 +54,9 @@ class World:
         self.bg_intensity = w_def["bg_intensity"]
         self.n_blocks_rnd = w_def["n_blocks_rnd"]
         self.max_steps = w_def["max_steps"]
-        self.fps = self.original_fps = w_def["fps"]
-        self.spf = 1 / self.fps
+        self.original_fps = w_def["fps"]
+        self.original_spf = 1 / self.original_fps
+        self.set_speed(self.original_fps)
         self.world_paused = False
         self.creation_time = time.time
 
@@ -110,6 +111,13 @@ class World:
                 _ = self.place_at(block)  # Put in random position if possible (fail condition ignored).
                 self.blocks.append(block)
                 n += 1
+
+    def set_speed(self, fps=None):
+        self.fps = fps
+        if fps is None:
+            self.spf = None
+        else:
+            self.spf = 1 / self.fps
 
     def place_at(self, thing, position=[None, None], relocate=False):
         # If position is not defined, find a random free place and move the Thing there.
@@ -278,11 +286,13 @@ class World:
         elif key in [ui.KEY_RIGHT, ui.KEY_SRIGHT]:  # Faster speed.
             self.fps *= 2
             self.spf = 1 / self.fps
+        elif key in [ui.KEY_UP]:  # Go full speed!
+            self.set_speed(None)
         elif key == ord(' '):  # Pause the world.
             self.world_paused = True
         elif key == ord('\t'):  # Track a different agent.
             current_idx = self.agents.index(self.tracked_agent)
-            if current_idx == len(self.agents):
+            if current_idx == len(self.agents) - 1:
                 self.tracked_agent = self.agents[0]
             else:
                 self.tracked_agent = self.agents[current_idx + 1]

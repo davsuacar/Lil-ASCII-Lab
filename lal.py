@@ -33,8 +33,9 @@ def main_loop(stdscr, world):
             # Evolve world by one time-fixed step.
             t_start = time.time()
             world.step()
-            t_end = time.time()
-            time.sleep(world.spf - (t_end - t_start))
+            if world.spf is not None:
+                t_end = time.time()
+                time.sleep(world.spf - (t_end - t_start))
 
     # Exit program.
     _ = u_i.ask("Bye! (Press to exit)")

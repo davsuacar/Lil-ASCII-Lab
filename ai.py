@@ -1,5 +1,5 @@
 ###############################################################
-# A.I 
+# AI
 # for "Lil' ASCII Lab" and its entities...
 
 ###############################################################
@@ -45,11 +45,10 @@ ACTIONS_DEF = {
 
 def obtain_possible_moves(world, position, moves_delta_list):
     '''
-    
     :param world:
     :param position:
     :param moves_delta_list:
-    :return: Return a list with the deltas from 'moves_delta_list' which if applied to given 'position', would land on an emptly tile in 'world'. 
+    :return: Return a list with the deltas from 'moves_delta_list' which if applied to given 'position', would land on an emptly tile in 'world'.
     '''
 
     possible_moves = [delta for delta in moves_delta_list if world.tile_is_empty(position + delta)]
@@ -58,9 +57,9 @@ def obtain_possible_moves(world, position, moves_delta_list):
 
 def obtain_possible_bites(world, position, moves_delta_list):
     '''
-    :param world: 
-    :param position: 
-    :param moves_delta_list: 
+    :param world:
+    :param position:
+    :param moves_delta_list:
     :return: Return a list with the deltas from 'moves_delta_list' which, if applied to given 'position', would land on an emptly tile in 'world'.
     '''
 
@@ -74,9 +73,8 @@ def obtain_possible_bites(world, position, moves_delta_list):
 
 def default_senses(action, world=None):
     '''
-    
-    :param world: 
-    :return: Void Senses function, returning the world passed. 
+    :param world:
+    :return: Void Senses function, returning the world passed.
     '''
 
     return world
@@ -84,7 +82,7 @@ def default_senses(action, world=None):
 
 ###############################################################
 # Minds: Policies
-# 
+#
 # A policy selects an action at each step for the agent.
 #
 # - Inputs:
@@ -108,8 +106,8 @@ def mindless(agent, world, state=None):
 
 def wanderer(agent, world, state=None):
     '''
-    :param agent: 
-    :param world: 
+    :param agent:
+    :param world:
     :return: It chooses random moves, stopping from time to time. Some parametrizable inertia gives continuity to successful moves.
     # NOTE: 'world' is only passed in order to call auxiliary methods.
     '''

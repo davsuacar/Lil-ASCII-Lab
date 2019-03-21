@@ -10,10 +10,9 @@ LO:
 
 * Implement dynamics of basic attributes: inventory.
 * Implement basic logic:
-
-* Input = Status + Reward, from the World.
-* Policy = hardcoded behaviours (random, herbivores, predators...).
-* Actions = Move, Eat, No-action.
+  * Input = Status + Reward, from the World.
+  * Policy = hardcoded behaviours (random, herbivores, predators...).
+  * Actions = Move, Eat, No-action.
 
 Perception (inputs):
 
@@ -44,7 +43,7 @@ HI:
 
 * Implement advanced energy dynamics: a) fixed resources granting INSTANT recharge; b) mobile resources that: b.1) can be picked, carried and dropped; b.2) can be consumed, granting DELAYED recharge.
 * Consider agents' ability (yes/no) to "resurrect" if granted new energy.
-* Decouple UI / AI refresh rates, e.g. one AI step every 5 UI steps. 
+* Decouple UI / AI refresh rates, e.g. one AI step every 5 UI steps.
 
 LO:
 
@@ -92,6 +91,7 @@ UI:
 
 * Add key controls:
   * Left / right key to control simulation speed.
+  * Up key for full speed.
   * Space to pause simulation.
   * Tab to change tracked_agent.
 * Tracker: Show AI identifiers = Mind + Senses.
@@ -106,9 +106,9 @@ UI:
 * Add ncurses terminal support for b&w, 8 or 16 colors.
 * Handle sizes not fitting on terminal:
 * Overall UI:
-    - excessive board width
-    - excessive board height
-    - insufficient space for board + tracker
+  * excessive board width
+  * excessive board height
+  * insufficient space for board + tracker
 
 Add "Lil' ASCI Lab" logo to tracker.
 

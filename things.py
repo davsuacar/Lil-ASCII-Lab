@@ -1,5 +1,5 @@
 ###############################################################
-# Agents 
+# Agents
 # for "Lil' ASCII Lab" and its entities...
 
 ###############################################################
@@ -13,7 +13,7 @@ TILE_DEF = (
     ("tile", "·", ui.BLACK, ui.BRIGHT, [None, None])
 )
 
-# Block definition: 
+# Block definition:
 #   Number of instances (or None for RND, based on world's width and % of randomness).
 #   Type, i.e. its name.
 #   Aspect: " " for a generic full block (which will be doubled to fit world's spacing).
@@ -41,7 +41,7 @@ BLOCKS_DEF = (
 #       Maximum energy the agent can acquire.
 #       Bite power, amount of energy the agent can take with one bite.
 #       Step_cost, i.e. energy consumed per world step regardless of action.
-#       Move_cost, i.e. energy consumed for moving to an adjacent tile. 
+#       Move_cost, i.e. energy consumed for moving to an adjacent tile.
 #   Senses:
 #       The function translating the environment into input for an agent's mind.
 #       If None, ai.default_senses() is assigned.
