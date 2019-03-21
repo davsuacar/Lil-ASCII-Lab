@@ -1,5 +1,5 @@
 ###############################################################
-# The world 
+# The world
 # for "Lil' ASCII Lab" and its entities...
 
 ###############################################################
@@ -7,6 +7,7 @@
 import numpy as np
 import random
 import time
+
 import things
 import ui
 
@@ -16,17 +17,13 @@ WORLD_DEF = {
     "name": "Random Blox",
     "width": 20,  # x from 0 to width - 1
     "height": 15,  # y from 0 to height - 1
-    "bg_color": ui.BLACK,  # background color
-    "bg_intensity": ui.NORMAL,  # background intensity (NORMAL or BRIGHT)
+    "bg_color": ui.BLACK,  # background color (see ui.py module).
+    "bg_intensity": ui.NORMAL,  # background intensity (NORMAL or BRIGHT).
     "n_blocks_rnd": 0.4,  # % of +/- randomness in number of blocks [0, 1]
     "max_steps": None,  # How long to run the world ('None' for infinite loop)
-    "chk_steps": None,  # How often user will be asked for quit/go-on ('None' = never ask)
-    "fps": 2,  # Number of steps to run per second (TODO: full speed if 'None'?)
-    "random_seed": None,  # Define seed to produce repeatable executions or None for random.
+    "fps": 2,  # Number of steps run per second (TODO: full speed if 'None'?)
+    "random_seed": None,  # Seed for reproducible runs (None for random).
 }
-#   color:  from among 8 options (BLACK, BLUE, CYAN, GREEN, MAGENTA, RED, WHITE, YELLOW)
-#   intensity: NORMAL or BRIGHT
-
 
 # Simulation definition:
 # Theses are the settings provided to the world:
@@ -57,14 +54,15 @@ class World:
         self.bg_intensity = w_def["bg_intensity"]
         self.n_blocks_rnd = w_def["n_blocks_rnd"]
         self.max_steps = w_def["max_steps"]
-        self.chk_steps = w_def["chk_steps"]
-        self.fps = w_def["fps"]
+        self.fps = self.original_fps = w_def["fps"]
         self.spf = 1 / self.fps
+        self.world_paused = False
         self.creation_time = time.time
 
         # Initialize world: randomness, steps and list of 'things' on it.
         seed = w_def["random_seed"]
-        if seed is None: seed = time.time()
+        if seed is None:
+            seed = time.time()
         self.random_seed = seed
         random.seed(seed)
 
@@ -236,13 +234,14 @@ class World:
                                     [agent.position[0] + action_arguments[0], \
                                      agent.position[1] + action_arguments[1]]
                                     )
-            if not success: action_delta = 0
+            if not success:
+                action_delta = 0
             # TODO: Penalize collisions through energy_delta?
 
         elif action_type == "FEED":
             prey = self.things[agent.position[0] + action_arguments[0], \
                                agent.position[1] + action_arguments[1]]
-            if prey != None:
+            if prey is not None:
                 # Take energy from prey (limited by prey's energy).
                 energy_taken = prey.update_energy(-agent.bite_power)
                 action_delta += - energy_taken
@@ -265,13 +264,28 @@ class World:
             end = self.steps >= self.max_steps
         return end
 
-    def time_to_ask(self):
-        # Check if the step has come to ask user.
-        if self.chk_steps is None:
-            ask = False
-        else:
-            ask = self.steps % self.chk_steps == 0
-        return ask
+    def process_key_stroke(self, key):
+        # Process user's keyboard input:
+        #   - Left / right key to control simulation speed.
+        #   - Space to pause simulation.
+        #   - Tab to change tracked_agent.
+
+        if key == -1:  # No key pressed.
+            pass
+        elif key in [ui.KEY_LEFT, ui.KEY_SLEFT]:  # Slow down speed.
+            self.fps /= 2
+            self.spf = 1 / self.fps
+        elif key in [ui.KEY_RIGHT, ui.KEY_SRIGHT]:  # Faster speed.
+            self.fps *= 2
+            self.spf = 1 / self.fps
+        elif key == ord(' '):  # Pause the world.
+            self.world_paused = True
+        elif key == ord('\t'):  # Track a different agent.
+            current_idx = self.agents.index(self.tracked_agent)
+            if current_idx == len(self.agents):
+                self.tracked_agent = self.agents[0]
+            else:
+                self.tracked_agent = self.agents[current_idx + 1]
 
 
 ###############################################################

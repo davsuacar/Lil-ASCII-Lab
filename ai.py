@@ -1,5 +1,5 @@
 ###############################################################
-# AI 
+# A.I 
 # for "Lil' ASCII Lab" and its entities...
 
 ###############################################################
@@ -16,26 +16,26 @@ import random
 
 ACTIONS_DEF = {
     "None":  # PASSIVE action.
-        (
-            [],  # Arguments: Not required.
-            0  # Energy ratio: 0x -> No energy consumption.
-        ),
+    (  # No arguments.
+        [],  # Arguments: Not required.
+        0  # Energy ratio: 0x -> No energy consumption.
+    ),
 
     "MOVE":  # MOVING to adjacent relative coordinates.
-        (  # 2 arguments with 8 possible values (excluding (0,0)).
-            np.array(  # [x, y] deltas for a given [x0, y0]
-                [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]]
-            ),
-            1  # Energy ratio: 1x -> Unmodified ratio for 1-tile moves.
+    (  # 2 arguments with 8 possible values (excluding (0,0)).
+        np.array(  # [x, y] deltas for a given [x0, y0]
+            [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]]
         ),
+        1  # Energy ratio: 1x -> Unmodified ratio for 1-tile moves.
+    ),
 
     "FEED":  # FEEDING from adjacent relative coordinates.
-        (  # 2 arguments with 8 possible values (excluding (0,0)).
-            np.array(  # [x, y] deltas for a given [x0, y0]
-                [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]]
-            ),
-            0  # Energy ratio: 0x -> No energy consumption.
+    (  # 2 arguments with 8 possible values (excluding (0,0)).
+        np.array(  # [x, y] deltas for a given [x0, y0]
+            [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]]
         ),
+        0  # Energy ratio: 0x -> No energy consumption.
+    ),
 }
 
 
@@ -108,7 +108,6 @@ def mindless(agent, world, state=None):
 
 def wanderer(agent, world, state=None):
     '''
-    
     :param agent: 
     :param world: 
     :return: It chooses random moves, stopping from time to time. Some parametrizable inertia gives continuity to successful moves.

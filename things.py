@@ -19,8 +19,8 @@ TILE_DEF = (
 #   Aspect: " " for a generic full block (which will be doubled to fit world's spacing).
 #           ONE single Unicode character, e.g. "#" (which will be doubled to fit world's spacing).
 #           TWO Unicode characters for specific styles (e.g. "[]", "▛▜", "◢◣").
-#   Color & intensity:  (see above).
-#   Position:   (a tuple, currently ignored).
+#   Color & intensity: (see ui.py module).
+#   Position: (a tuple, currently ignored).
 
 BLOCKS_DEF = (
     #    (None, "block", " ", ui.BLACK, ui.BRIGHT, [None, None]),
@@ -50,15 +50,15 @@ BLOCKS_DEF = (
 #       If None, ai.mindless() is assigned.
 
 AGENTS_DEF = (
-    (3, "bugggy", "⚉", ui.GREEN, ui.BRIGHT, [None, None], \
+    (3, "buggy", "⚉", ui.GREEN, ui.BRIGHT, [None, None],
      (100, 110, 5, -0.1, -1), None, ai.wanderer),
-    (1, "Omi", "Ω", ui.BLUE, ui.BRIGHT, [None, None], \
+    (1, "Omi", "Ω", ui.BLUE, ui.BRIGHT, [None, None],
      (100, 110, 5, -1, -0.1), None, ai.wanderer),
-    (3, "foe", "Д", ui.MAGENTA, ui.BRIGHT, [None, None], \
+    (3, "foe", "Д", ui.MAGENTA, ui.BRIGHT, [None, None],
      (100, 110, 10, -1, -0.1), None, ai.wanderer),
-    (5, "apple", "", ui.RED, ui.BRIGHT, [None, None], \
+    (5, "apple", "", ui.RED, ui.BRIGHT, [None, None],
      (20, 20, 0, -0.001, 0), None, None),
-    (5, "star", "*", ui.YELLOW, ui.BRIGHT, [None, None], \
+    (5, "star", "*", ui.YELLOW, ui.BRIGHT, [None, None],
      (30, 30, 0, 0, 0), None, None),
 )
 
@@ -101,7 +101,7 @@ class Agent(Thing):
     def __init__(self, a_def, agent_suffix=None):
         # Initialize inherited and specific attributes.
         super().__init__(name=a_def[0], aspect=a_def[1], color=a_def[2], intensity=a_def[3], position=a_def[4])
-        if agent_suffix != None:
+        if agent_suffix is not None:
             self.name = "{}_{}".format(self.name, str(agent_suffix))
         self.energy = a_def[5][0]
         self.max_energy = a_def[5][1]

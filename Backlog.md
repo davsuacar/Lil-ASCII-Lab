@@ -26,10 +26,10 @@ Perception (inputs):
 HI:
 
 * Tracker: Show agents with minds only (not mindless "resources").
-* Tracker (aesthetics): Review tracker's layout (logo on top?, tracked agent below header?...).
 
 LO:
 
+* Tracker (aesthetics): Review tracker's layout (split sub-areas?).
 * Add tracking feature: World.highlighted_agents. ALL: make agents more visible with highlighted BG?, TRACKED: only the tracked one; None: Current implementation.
 * Add color to logo at program exit.
 * Implement basic agent animation in "aspect" (2 or 3 looping chars).
@@ -90,6 +90,10 @@ World dynamics:
 
 UI:
 
+* Add key controls:
+  * Left / right key to control simulation speed.
+  * Space to pause simulation.
+  * Tab to change tracked_agent.
 * Tracker: Show AI identifiers = Mind + Senses.
 * Tracker: Highlight tracked agent on the right (with "▶")
 * Tracker: Differentiate agents' names.

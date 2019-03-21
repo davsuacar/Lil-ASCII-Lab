@@ -28,12 +28,21 @@ NORMAL = 0  # No offset for normal colors (1..8).
 BRIGHT = 8  # Offset to get brighter colors, assuming COLORS >= 16 .
 MAX_COLORS = 16  # The number of predefined colors to try to use.
 
+# Constants based on curses to manage keycaps:
+KEY_DOWN = curses.KEY_DOWN  # Down-arrow
+KEY_UP = curses.KEY_UP  # Up-arrow
+KEY_LEFT = curses.KEY_LEFT  # Left-arrow
+KEY_SLEFT = curses.KEY_SLEFT  # Shifted Left arrow
+KEY_RIGHT = curses.KEY_RIGHT  # Right-arrow
+KEY_SRIGHT = curses.KEY_SRIGHT  # Shifted Right arrow
+
+# Other constants.
 LOW_ENERGY_THRESHOLD = 0.20  # Below this % energy is displayed as dangerously low.
 
 # Output settings: Define how I/O will happen:
 UI_def = {
     "resize_term": True,  # Flag to allows resizing the actual terminal where program runs.
-    "spacing": 1, # Number of 'spc' chars to concatenate at the right of every tile (for an even vert/horiz aspect ratio).
+    "spacing": 1,  # Number of 'spc' chars to concatenate at the right of every tile (for an even vert/horiz aspect ratio).
     "extend_blocks": False,  # Whether blocks will be doubled to cover "holes".
     "min_ui_width": 20,  # Minimum width for the text interface, regardless of board size.
     "min_ui_height": 15,  # Minimum height for the text interface, regardeless of board size.
@@ -85,8 +94,8 @@ class UI:
         term_size_ok, term_height, term_width = self.handle_terminal_size(self.stdscr)
         if not term_size_ok:
             raise Exception(
-                "World and UI ({} x {}) don't fit in the terminal ({} x {}).".format(self.height, self.width,
-                                                                                     term_height, term_width))
+                "World and tracker ({} x {}) don't fit in the terminal ({} x {}).".format(self.height, self.width,
+                                                                                          term_height, term_width))
 
         # Reshape aspect of world's blocks to fit UI settings.
         self.reshape_blocks(self.world.blocks)
@@ -130,6 +139,7 @@ class UI:
         self.footer.bkgd(" ", left_pair)
         self.tracker.bkgd(" ", right_pair)
 
+        self.footer.nodelay(True)  # Establish the "nodelay" mode.
         stdscr.refresh()
 
     def reshape_blocks(self, world_blocks):
@@ -220,12 +230,29 @@ class UI:
         self.draw_header2("PAUSED", pair)
 
         curses.flushinp()  # Throw away any typeahead not yet processed.
+        self.footer.nodelay(False)  # So that getkey() waits for a key press.
         self.footer.erase()  # Erase footer window.
         pair = self.pair(self.footer_fg, self.footer_bg)
-        self.footer.addnstr(0, 0, question.ljust(self.board_width - 1), self.footer.getmaxyx()[1] - 2,
+        self.footer.addnstr(0, 0, question.ljust(self.board_width - 1),
+                            self.footer.getmaxyx()[1] - 2,
                             pair | curses.A_BLINK)
         self.footer.refresh()
         answer = self.footer.getkey()
+        self.footer.nodelay(True)  # Back to "nodelay" mode.
+        return answer
+
+    def get_key_pressed(self, menu_text):
+        # Print menu_text on footer and capture a key IF pressed.
+        pair = self.pair(self.header_fg, self.header_bg2)
+
+        # curses.flushinp()  # Throw away any typeahead not yet processed.
+        self.footer.erase()  # Erase footer window.
+        pair = self.pair(self.footer_fg, self.footer_bg)
+        self.footer.addnstr(0, 0, menu_text.ljust(self.board_width - 1),
+                            self.footer.getmaxyx()[1] - 2,
+                            pair)
+        self.footer.refresh()
+        answer = self.footer.getch()
         return answer
 
     def draw_board(self):
@@ -343,7 +370,7 @@ class UI:
         y = 2  # Initial line.
         agents_list = self.world.agents[
                       :self.tracker_height - 4]  # Pick top of list, preserving 2 top rows + 2 bottom rows.
-        for agent in agents_list:
+        for agent in filter(lambda a: a.mind is not None, agents_list):
             agent_color_pair = self.pair(agent.color + agent.intensity, self.tracker_bg)
             if agent == tracked_agent:
                 prefix = "▶ "
@@ -360,7 +387,7 @@ class UI:
             y += 1
 
         # Tracker's footer.
-        time_run = str(datetime.timedelta( \
+        time_run = str(datetime.timedelta(
             seconds=(self.world.steps * self.world.spf) // 1))
         left_line = " Step {:,} ({}) ".format(self.world.steps, time_run)
         right_line = " Lil' ASCII Lab 0.1 "
@@ -373,6 +400,7 @@ class UI:
 
     def draw(self):
         # Generate and display a full refresh of the world state using curses lib.
+        # Then check for user's input.
 
         # Erase screen first.
         self.stdscr.erase()
@@ -387,11 +415,22 @@ class UI:
         # TRACKER: Update current state of the world.
         self.draw_tracker()
 
-        # FOOTER: Update message at bottom.
-        self.say("(running...)")
+        # FOOTER:
+        if self.world.world_paused:
+            # Ask user whether to go on.
+            answer = self.ask("Continue? (y/n) ")
+            user_break = answer not in ["Y", "y"]
+            self.world.world_paused = False
+        else:
+            # Update keyboard options at bottom. Get keyboard input.
+            key = self.get_key_pressed("Speed(< >) Stop(SPC) Select(TAB)")
+            self.world.process_key_stroke(key)
+            user_break = False
 
         # Refresh screen.
         curses.doupdate()
+
+        return user_break
 
 
 ###############################################################
