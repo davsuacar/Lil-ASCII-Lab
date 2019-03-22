@@ -368,8 +368,7 @@ class UI:
 
         # Rest of Things (agents, blocks?).
         y = 2  # Initial line.
-        agents_list = self.world.agents[
-                      :self.tracker_height - 4]  # Pick top of list, preserving 2 top rows + 2 bottom rows.
+        agents_list = self.world.agents
         for agent in filter(lambda a: a.mind is not None, agents_list):
             agent_color_pair = self.pair(agent.color + agent.intensity, self.tracker_bg)
             if agent == tracked_agent:
@@ -385,6 +384,8 @@ class UI:
                 pair = bright_red_color_pair
             self.tracker.addstr(" {:>6.2f}".format(agent.energy), pair)
             y += 1
+            if y > self.tracker_height - 3:  # Maximal length of list on screen.
+                break
 
         # Tracker's footer.
         time_run = str(datetime.timedelta(
@@ -418,7 +419,7 @@ class UI:
         # FOOTER:
         if self.world.world_paused:
             # Ask user whether to go on.
-            answer = self.ask("Press to continue... (Q to quit) ")
+            answer = self.ask(" Press to continue... (Q to quit) ")
             user_break = answer in ["Q", "q"]
             self.world.world_paused = False
         else:

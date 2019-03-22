@@ -50,5 +50,6 @@ if __name__ == '__main__':
     wrapper(main_loop, world)
 
     # Quit program.
-    print("{:<20}{}".format("- Steps run:", world.steps))
+    print("{:<20}{}".format("- Ended:", time.ctime()))
+    print("{:<20}{:,}".format("- Steps run:", world.steps))
     print("{:<20}{}".format("- Random seed used:", world.random_seed))
