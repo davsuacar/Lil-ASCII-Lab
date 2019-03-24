@@ -21,7 +21,7 @@ WORLD_DEF = {
     "bg_intensity": ui.NORMAL,  # background intensity (NORMAL or BRIGHT).
     "n_blocks_rnd": 0.4,  # % of +/- randomness in number of blocks [0, 1]
     "max_steps": None,  # How long to run the world ('None' for infinite loop).
-    "fps": None,  # Frames-Per-Second, i.e. number of steps run per second.
+    "fps": 10,  # Frames-Per-Second, i.e. number of steps run per second.
     "random_seed": None,  # Seed for reproducible runs (None for random).
 }
 
