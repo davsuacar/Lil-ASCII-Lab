@@ -34,11 +34,12 @@ def main_loop(stdscr, world):
             t_start = time.time()
             world.step()
             if world.spf is not None:
+                # No full-speed mode; keep time-step duration.
                 t_end = time.time()
-                time.sleep(world.spf - (t_end - t_start))
+                time.sleep(max(0, world.spf - (t_end - t_start)))
 
     # Exit program.
-    _ = u_i.ask("Bye! (Press to exit)")
+    # TODO: Produce final results.
 
 if __name__ == '__main__':
     # Main program.

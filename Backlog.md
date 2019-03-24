@@ -24,7 +24,7 @@ Perception (inputs):
 
 HI:
 
-* Tracker: Show agents with minds only (not mindless "resources").
+* ...
 
 LO:
 
@@ -89,6 +89,9 @@ World dynamics:
 
 UI:
 
+* Tracker: Show current world speed (at fps, full-speed).
+* Tracker: Tab selects only living agents with some mind.
+* Tracker: Show agents with minds only (not mindless "resources").
 * Add key controls:
   * Left / right key to control simulation speed.
   * Up key for full speed.

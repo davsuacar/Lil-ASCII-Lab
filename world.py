@@ -20,8 +20,8 @@ WORLD_DEF = {
     "bg_color": ui.BLACK,  # background color (see ui.py module).
     "bg_intensity": ui.NORMAL,  # background intensity (NORMAL or BRIGHT).
     "n_blocks_rnd": 0.4,  # % of +/- randomness in number of blocks [0, 1]
-    "max_steps": None,  # How long to run the world ('None' for infinite loop)
-    "fps": 2,  # Number of steps run per second (TODO: full speed if 'None'?)
+    "max_steps": None,  # How long to run the world ('None' for infinite loop).
+    "fps": None,  # Frames-Per-Second, i.e. number of steps run per second.
     "random_seed": None,  # Seed for reproducible runs (None for random).
 }
 
@@ -34,19 +34,23 @@ Simulation_def = (
     things.AGENTS_DEF,  # The agents who will live in it.
 )
 
+# Constants:
+WORLD_DEFAULT_FPS = 60  # Fall-back world speed (in frames-per-second).
+WORLD_DEFAULT_SPF = 1 / WORLD_DEFAULT_FPS  # (the same in seconds-per-frame).
 
 ###############################################################
+
 
 class World:
     # A tiled, rectangular setting on which a little universe takes life.
     def __init__(self, Simulation_def):
-        # Create a world from the definitions given
+        # Create a world from the definitions given.
         w_def = Simulation_def[0]
         t_def = Simulation_def[1]
         b_def = Simulation_def[2]
         a_def = Simulation_def[3]
 
-        # Assign values from w_def
+        # Assign values from w_def.
         self.name = w_def["name"]
         self.width = w_def["width"]
         self.height = w_def["height"]
@@ -54,10 +58,10 @@ class World:
         self.bg_intensity = w_def["bg_intensity"]
         self.n_blocks_rnd = w_def["n_blocks_rnd"]
         self.max_steps = w_def["max_steps"]
-        self.original_fps = w_def["fps"]
-        self.original_spf = 1 / self.original_fps
-        self.set_speed(self.original_fps)
-        self.world_paused = False
+        # Time and speed settings.
+        self.initialize_fps(w_def["fps"])
+
+        self.paused = False
         self.creation_time = time.time
 
         # Initialize world: randomness, steps and list of 'things' on it.
@@ -112,12 +116,58 @@ class World:
                 self.blocks.append(block)
                 n += 1
 
-    def set_speed(self, fps=None):
+    def initialize_fps(self, fps):
+        # fps, spf is the current world speed (frames-per-second, seconds-per-frame).
+        # original_fps, original_spf keeps the original setting.
+        # previous_fps remembers latest fps speed before going 'full-speed',
+        # or establishes WORLD_DEFAULT_FPS when starting af 'full-speed'.
+
         self.fps = fps
         if fps is None:
             self.spf = None
+            self.previous_fps = WORLD_DEFAULT_FPS
+
         else:
+            self.spf = 1 / fps
+            self.previous_fps = fps
+
+        self.original_fps = self.fps
+        self.original_spf = self.spf
+
+    def update_fps(self, fps_factor):
+        if fps_factor is None:
+            # 'None' means 'go full-speed'.
+            if self.fps is None:
+                # Already at full-speed; no action needed.
+                pass
+            else:
+                # Update needed.
+                self.previous_fps = self.fps
+                self.fps = None
+                self.spf = None
+        else:
+            # Check current fps.
+            if self.fps is None:
+                # Slow down from 'full-speed' to previous fps/spf.
+                self.fps = self.previous_fps
+            else:
+                # Simply apply factor to fps.
+                self.fps *= fps_factor
+            # Update spf.
             self.spf = 1 / self.fps
+
+    def seconds_run(self):
+        # Return the number of seconds run in world's time based on spf(seconds per frame).
+        # Assumptions:
+        # - Since speed can vary at user's request, original_spf is assumed.
+        # - And if original_fps was None, WORLD_DEFAULT_SPF us assumed.
+
+        if self.original_spf is not None:
+            referential_spf = self.original_spf
+        else:
+            referential_spf = WORLD_DEFAULT_SPF
+
+        return (self.steps * referential_spf) // 1
 
     def place_at(self, thing, position=[None, None], relocate=False):
         # If position is not defined, find a random free place and move the Thing there.
@@ -238,16 +288,16 @@ class World:
 
         elif action_type == "MOVE":
             # Check destination tile is free.
-            success = self.place_at(agent, \
-                                    [agent.position[0] + action_arguments[0], \
+            success = self.place_at(agent,
+                                    [agent.position[0] + action_arguments[0],
                                      agent.position[1] + action_arguments[1]]
                                     )
             if not success:
                 action_delta = 0
-            # TODO: Penalize collisions through energy_delta?
+                # TODO: Penalize collisions through energy_delta?
 
         elif action_type == "FEED":
-            prey = self.things[agent.position[0] + action_arguments[0], \
+            prey = self.things[agent.position[0] + action_arguments[0],
                                agent.position[1] + action_arguments[1]]
             if prey is not None:
                 # Take energy from prey (limited by prey's energy).
@@ -270,6 +320,7 @@ class World:
             end = False
         else:
             end = self.steps >= self.max_steps
+
         return end
 
     def process_key_stroke(self, key):
@@ -281,26 +332,33 @@ class World:
         if key == -1:  # No key pressed.
             pass
         elif key in [ui.KEY_LEFT, ui.KEY_SLEFT]:  # Slow down speed.
-            self.fps /= 2
-            self.spf = 1 / self.fps
+            self.update_fps(fps_factor=0.5)
         elif key in [ui.KEY_RIGHT, ui.KEY_SRIGHT]:  # Faster speed.
-            self.fps *= 2
-            self.spf = 1 / self.fps
+            self.update_fps(fps_factor=2.0)
         elif key in [ui.KEY_UP]:  # Go full speed!
-            self.set_speed(None)
+            self.update_fps(fps_factor=None)
         elif key == ord(' '):  # Pause the world.
-            self.world_paused = True
+            self.paused = True
         elif key == ord('\t'):  # Track a different agent.
-            current_idx = self.agents.index(self.tracked_agent)
-            if current_idx == len(self.agents) - 1:
-                self.tracked_agent = self.agents[0]
-            else:
-                self.tracked_agent = self.agents[current_idx + 1]
+            initial_idx = idx = self.agents.index(self.tracked_agent)
+            next_agent = None
+            end_search = False
+            while not end_search:
+                # Pick next index, and its corresponding agent.
+                if idx == len(self.agents) - 1:
+                    idx = 0
+                else:
+                    idx += 1
+                next_agent = self.agents[idx]
+                # Check if valid, or if full cycle is complete.
+                if (next_agent.mind is not None and next_agent.energy > 0) or idx == initial_idx:
+                    end_search = True
+            self.tracked_agent = next_agent
 
 
 ###############################################################
 # MAIN PROGRAM
-# code for TESTING purposes only
+# (code for TESTING purposes only.)
 
 if __name__ == '__main__':
     print("world.py is a module of Lil' ASCII Lab and has no real main module.")

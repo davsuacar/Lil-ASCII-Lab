@@ -38,6 +38,7 @@ KEY_SRIGHT = curses.KEY_SRIGHT  # Shifted Right arrow
 
 # Other constants.
 LOW_ENERGY_THRESHOLD = 0.20  # Below this % energy is displayed as dangerously low.
+DEAD_AGENT_COLOR = (BLACK, BRIGHT)
 
 # Output settings: Define how I/O will happen:
 UI_def = {
@@ -52,7 +53,7 @@ UI_def = {
     "tracking_right_column": 36,  # Column where the right section of the tracker starts.
     "name_length": 10,  # Maximum length displayed of agents' names.
     "window_bg": BLACK,  # BG color of the full terminal window.
-    "header_fg": WHITE + NORMAL,  # FG color of the TITLE of the world.
+    "header_fg": WHITE + BRIGHT,  # FG color of the TITLE of the world.
     "header_bg": BLUE + NORMAL,  # BG color of the TITLE of the world.
     "header_bg2": RED + BRIGHT,  # BG color of the shorter special field.
     "header_bg3": MAGENTA + NORMAL,  # Special BG color of the shorter special field.
@@ -202,12 +203,12 @@ class UI:
         # Resize terminal.
         os.system("printf '\e[8;{};{}t'".format(rows, columns))
 
-    def draw_header(self, color_pair):
+    def draw_header(self):
         # Header: put world's name at top left.
-        title = " " + self.world.name + " "
+        title = " {} ".format(self.world.name)
         fill = " " * max(0, self.board_width - len(title))
         pair = self.pair(self.header_fg, self.header_bg)
-        self.header.addnstr(0, 0, title + fill, self.board_width - self.header2_width, color_pair | curses.A_BOLD)
+        self.header.addnstr(0, 0, title + fill, self.board_width - self.header2_width, pair | curses.A_BOLD)
         self.header.noutrefresh()
 
     def draw_header2(self, text, color_pair):
@@ -320,7 +321,7 @@ class UI:
         # Tracked agent: header.
         self.tracker.addstr(0, 1, "[ ", fg_bright_color_pair)
         self.tracker.addstr(tracked_agent.aspect, agent_color_pair | curses.A_BOLD)
-        self.tracker.addstr(" ({}) ".format(tracked_agent.name[:self.name_length]), fg_bright_color_pair)
+        self.tracker.addstr(" {} ".format(tracked_agent.name[:self.name_length]), fg_bright_color_pair | curses.A_BOLD)
         energy_percent = round(100 * tracked_agent.energy / tracked_agent.max_energy)
         n_blocks = 5
         n_greens = round(n_blocks * energy_percent / 100)
@@ -346,7 +347,11 @@ class UI:
 
         # Tracked agent: Other information.
         self.tracker.addstr(3, 2, "{:<14}".format("AI:"), fg_color_pair)
-        self.tracker.addstr("{}".format(tracked_agent.mind.__name__), fg_bright_color_pair)
+        if tracked_agent.mind is None:
+            text = "None"
+        else:
+            text = tracked_agent.mind.__name__
+        self.tracker.addstr("{}".format(text), fg_bright_color_pair)
         self.tracker.addstr(4, 2, "{:<14}".format(" "), fg_color_pair)
         self.tracker.addstr("{}".format(tracked_agent.senses.__name__), fg_bright_color_pair)
 
@@ -367,17 +372,20 @@ class UI:
         self.tracker.addstr("{}".format('012345678901234567890123456789'), fg_bright_color_pair)
 
         # Rest of Things (agents, blocks?).
-        y = 2  # Initial line.
+        self.tracker.addstr(2, self.tracking_right_column, " Top Agents     Energy ", fg_bright_color_pair | curses.A_REVERSE)
+        y = 3  # Initial line.
         agents_list = self.world.agents
         for agent in filter(lambda a: a.mind is not None, agents_list):
             agent_color_pair = self.pair(agent.color + agent.intensity, self.tracker_bg)
             if agent == tracked_agent:
                 prefix = "▶ "
+                pair = fg_bright_color_pair | curses.A_BOLD
             else:
                 prefix = "  "
+                pair = fg_color_pair
             self.tracker.addstr(y, self.tracking_right_column, prefix, fg_bright_color_pair)
             self.tracker.addstr(agent.aspect, agent_color_pair)
-            self.tracker.addstr(" {:<11}".format(agent.name[:self.name_length]), fg_color_pair)
+            self.tracker.addstr(" {:<11}".format(agent.name[:self.name_length]), pair)
             if agent.energy > agent.max_energy * LOW_ENERGY_THRESHOLD:
                 pair = fg_bright_color_pair
             else:
@@ -388,9 +396,12 @@ class UI:
                 break
 
         # Tracker's footer.
-        time_run = str(datetime.timedelta(
-            seconds=(self.world.steps * self.world.original_spf) // 1))
-        left_line = " Step {:,} ({}) ".format(self.world.steps, time_run)
+        time_run = str(datetime.timedelta(seconds=self.world.seconds_run()))
+        if self.world.fps is None:
+            fps = "full-speed "
+        else:
+            fps = "{:,.1f} fps ".format(self.world.fps)
+        left_line = " Step {:,} ({}) {}".format(self.world.steps, time_run, fps)
         right_line = " Lil' ASCII Lab 0.1 "
         self.tracker.addstr(self.tracker_height - 1, 1, left_line, fg_bright_color_pair | curses.A_REVERSE)
         self.tracker.addstr(self.tracker_height - 1, self.tracker_width - 1 - len(right_line), right_line,
@@ -407,7 +418,7 @@ class UI:
         self.stdscr.erase()
 
         # HEADER: Title on top + status.
-        self.draw_header(self.pair(self.header_fg, self.header_bg))
+        self.draw_header()
         self.draw_header2("LIVE", self.pair(self.header_fg, self.header_bg2))
 
         # BOARD: Update world representation.
@@ -417,11 +428,11 @@ class UI:
         self.draw_tracker()
 
         # FOOTER:
-        if self.world.world_paused:
+        if self.world.paused:
             # Ask user whether to go on.
             answer = self.ask(" Press to continue... (Q to quit) ")
             user_break = answer in ["Q", "q"]
-            self.world.world_paused = False
+            self.world.paused = False
         else:
             # Update keyboard options at bottom. Get keyboard input.
             key = self.get_key_pressed("Speed(< ^ >) Stop(SPC) Select(TAB)")

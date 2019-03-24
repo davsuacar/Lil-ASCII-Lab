@@ -23,10 +23,10 @@ TILE_DEF = (
 #   Position: (a tuple, currently ignored).
 
 BLOCKS_DEF = (
-    #    (None, "block", " ", ui.BLACK, ui.BRIGHT, [None, None]),
-    #    (4, "block2", "▛▜", ui.BLUE, ui.NORMAL, [None, None]),
-    (10, "fence", "#", ui.BLACK, ui.BRIGHT, [None, None]),
-    (40, "stone", "▓", ui.BLACK, ui.BRIGHT, [None, None]),
+    #   (None, "block", " ", ui.BLACK, ui.BRIGHT, [None, None]),
+    #   (4, "block2", "▛▜", ui.BLUE, ui.NORMAL, [None, None]),
+    #   (10, "fence", "#", ui.WHITE, ui.BRIGHT, [None, None]),
+    (60, "stone", "▧", ui.BLACK, ui.BRIGHT, [None, None]),
 )
 
 # Agent definition:
@@ -47,16 +47,18 @@ BLOCKS_DEF = (
 #       If None, ai.default_senses() is assigned.
 #   Mind:
 #       The cognitive function processing senses to output actions.
-#       If None, ai.mindless() is assigned.
+#       If None, a NO_ACTION will always be assumed.
 
 AGENTS_DEF = (
-    (3, "buggy", "⚉", ui.GREEN, ui.BRIGHT, [None, None],
-     (100, 110, 5, -0.1, -1), None, ai.wanderer),
+    (10, "buggy", "⚉", ui.GREEN, ui.BRIGHT, [None, None],
+     (100, 110, 5, -0.1, -0.1), None, ai.wanderer),
     (1, "Omi", "Ω", ui.BLUE, ui.BRIGHT, [None, None],
-     (100, 110, 5, -1, -0.1), None, ai.wanderer),
+     (100, 110, 5, -0.1, -0.5), None, ai.wanderer),
+    (3, "killer", "Ж", ui.RED, ui.BRIGHT, [None, None],
+     (100, 110, 100, -0.1, -1), None, ai.wanderer),
     (3, "foe", "Д", ui.MAGENTA, ui.BRIGHT, [None, None],
-     (100, 110, 10, -1, -0.1), None, ai.wanderer),
-    (5, "apple", "", ui.RED, ui.BRIGHT, [None, None],
+     (100, 110, 10, -0.1, -1), None, ai.wanderer),
+    (5, "apple", "", ui.RED, ui.NORMAL, [None, None],
      (20, 20, 0, -0.001, 0), None, None),
     (5, "star", "*", ui.YELLOW, ui.BRIGHT, [None, None],
      (30, 30, 0, 0, 0), None, None),
@@ -113,10 +115,7 @@ class Agent(Thing):
             self.senses = ai.default_senses
         else:
             self.senses = a_def[6]
-        if a_def[7] is None:
-            self.mind = ai.mindless
-        else:
-            self.mind = a_def[7]
+        self.mind = a_def[7]
 
         self.steps = 0
         # Initialize current_state, current_energy_delta and chosen_action.
@@ -135,8 +134,7 @@ class Agent(Thing):
         # Update aspect.
         if self.energy <= 0:
             # The agent is dead.
-            self.color = ui.BLACK
-            self.intensity = ui.BRIGHT
+            self.color, self.intensity = ui.DEAD_AGENT_COLOR
 
         return self.current_energy_delta
 
@@ -184,8 +182,8 @@ class Agent(Thing):
 
         # TODO: Update policy (learning) based on:
         #   self.current_state (S_t)
+        #   self.chosen_action (A_t)
         #   self.current_energy_delta (r_t)
-        #    self.chosen_action (A_t)
 
         # Now the 'step' is totally finished.
         self.steps += 1
