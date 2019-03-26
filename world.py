@@ -351,8 +351,8 @@ class World:
                 else:
                     idx += 1
                 next_agent = self.agents[idx]
-                # Check if valid, or if full cycle is complete.
-                if (next_agent.mind is not None and next_agent.energy > 0) or idx == initial_idx:
+                # Check if valid [alive and no void 'action'], or if full cycle is complete.
+                if (next_agent.action is not None and next_agent.energy > 0) or idx == initial_idx:
                     end_search = True
             self.tracked_agent = next_agent
 
