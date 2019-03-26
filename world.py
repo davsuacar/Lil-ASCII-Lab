@@ -9,6 +9,7 @@ import random
 import time
 
 import things
+import ai
 import ui
 
 # World definition:
@@ -21,7 +22,7 @@ WORLD_DEF = {
     "bg_intensity": ui.NORMAL,  # background intensity (NORMAL or BRIGHT).
     "n_blocks_rnd": 0.4,  # % of +/- randomness in number of blocks [0, 1]
     "max_steps": None,  # How long to run the world ('None' for infinite loop).
-    "fps": 10,  # Frames-Per-Second, i.e. number of steps run per second.
+    "fps": 5,  # Frames-Per-Second, i.e. number of steps run per second.
     "random_seed": None,  # Seed for reproducible runs (None for random).
 }
 
@@ -35,7 +36,7 @@ Simulation_def = (
 )
 
 # Constants:
-WORLD_DEFAULT_FPS = 60  # Fall-back world speed (in frames-per-second).
+WORLD_DEFAULT_FPS = 5  # Fall-back world speed (in frames-per-second).
 WORLD_DEFAULT_SPF = 1 / WORLD_DEFAULT_FPS  # (the same in seconds-per-frame).
 
 ###############################################################
@@ -82,7 +83,7 @@ class World:
                 tile = things.Tile(t_def[0], t_def[1], t_def[2], t_def[3], [x, y])
                 self.ground[x, y] = tile
 
-                # Put AGENTS in the world.
+        # Put AGENTS in the world.
         self.agents = []  # List of all types of agent in the world.
         self.tracked_agent = None  # The agent to track during simulation.
         for a in a_def:  # Loop over the types of agent defined.
@@ -169,13 +170,13 @@ class World:
 
         return (self.steps * referential_spf) // 1
 
-    def place_at(self, thing, position=[None, None], relocate=False):
+    def place_at(self, thing, position=things.NO_POSITION, relocate=False):
         # If position is not defined, find a random free place and move the Thing there.
         # If position is defined,
         #       if not occupied, move a Thing to position;
         #       if occupied, relocate randomly if allowed by 'relocate', or fail otherwise.
         # Result of action: (True: success; False: fail).
-        if position == [None, None]:
+        if position == things.NO_POSITION:
             # position not defined; try to find a random one.
             position, success = self.find_free_tile()
         else:
@@ -265,7 +266,7 @@ class World:
             # Try to execute action.
             success, energy_delta = self.execute_action(agent, action)
             # Set new position, reward, other internal information.
-            agent.update(action, success, energy_delta)
+            agent.update(success, energy_delta)
 
         # Update the world's info
         self.agents.sort(key=lambda x: x.energy, reverse=True)
@@ -282,11 +283,11 @@ class World:
             success = False
             action_delta = 0
 
-        elif action_type == "None":
+        elif action_type == ai.NONE:
             # Rest action
             success = True
 
-        elif action_type == "MOVE":
+        elif action_type == ai.MOVE:
             # Check destination tile is free.
             success = self.place_at(agent,
                                     [agent.position[0] + action_arguments[0],
@@ -296,7 +297,7 @@ class World:
                 action_delta = 0
                 # TODO: Penalize collisions through energy_delta?
 
-        elif action_type == "FEED":
+        elif action_type == ai.EAT:
             prey = self.things[agent.position[0] + action_arguments[0],
                                agent.position[1] + action_arguments[1]]
             if prey is not None:

@@ -4,21 +4,25 @@
 
 HI:
 
-* ...
+* Refine AI for 'wanderer':
+  * Not to miss adjacent food when energy starts to be low.
+  * Choose highest-energy adjacent target for food.
+
+* Create new AI for 'TBD':
+  * Escape from attacks: 
+    * Prioritize moving over feeding/no-action.
+    * Choose best direction?
+  * Target highest-energy accessible (i.e. visible) targets.
 
 LO:
 
 * Implement dynamics of basic attributes: inventory.
-* Implement basic logic:
-  * Input = Status + Reward, from the World.
-  * Policy = hardcoded behaviours (random, herbivores, predators...).
-  * Actions = Move, Eat, No-action.
 
-Perception (inputs):
+## Senses - Perception (inputs)
 
 * Senses: Visual limitation (full world, subsection around agent, opacity of blocks...).
-* Other senses: (environment conditions, e.g. smell, lightness, rain, temperature...).
 * Messages from other agents.
+* Other senses: (environment conditions, e.g. smell, lightness, rain, temperature...).
 
 ## UI - User Interface
 
@@ -29,24 +33,32 @@ HI:
 LO:
 
 * Tracker (aesthetics): Review tracker's layout (split sub-areas?).
-* Add tracking feature: World.highlighted_agents. ALL: make agents more visible with highlighted BG?, TRACKED: only the tracked one; None: Current implementation.
+* In Fast-Forward mode, consider skipping frames drawing?
 * Add color to logo at program exit.
 * Implement basic agent animation in "aspect" (2 or 3 looping chars).
+* Tracking: Maintain agents' heatmaps (where they've been around).
 * Handle resize terminal without exiting.
 * Detect when resizing the terminal would exceed screen dimensions.
+
+Discarded:
+
 * Implement graphic orientation signalling on agents to show orientation (e.g. a blinking arrow [▲ ▶ ▼ ◀] on one adyacent tile).
-* Tracking: Maintain agents' heatmaps (where they've been around).
 
 ## World Dynamics
 
 HI:
 
-* Implement advanced energy dynamics: a) fixed resources granting INSTANT recharge; b) mobile resources that: b.1) can be picked, carried and dropped; b.2) can be consumed, granting DELAYED recharge.
+* Implement advanced energy dynamics:
+  * a) fixed resources granting INSTANT recharge ("stars");
+  * b) mobile resources that:
+    b.1) can be picked, carried and dropped;
+    b.2) can be consumed, granting DELAYED recharge.
+* Maintain a count of number of instances per type of agent.
 * Consider agents' ability (yes/no) to "resurrect" if granted new energy.
-* Decouple UI / AI refresh rates, e.g. one AI step every 5 UI steps.
 
 LO:
 
+* Main loop: Decouple UI / AI refresh rates, e.g. one AI step every 5 UI steps.
 * Improve world generation with patterns of blocks.
 * Consider creating "hole" blocks, causing instant death.
 
@@ -60,8 +72,7 @@ TO BE DEFINED:
 
 HI:
 
-* Allow Pause, Stop, Play, FF (at different speeds: x1, x2, ...).
-* In Fast-Forward mode, consider skipping frames drawing?
+* ...
 
 LO:
 
@@ -78,6 +89,12 @@ AI:
 
 * Implement a basic random AI (e.g. random moves / still, with RND inertia).
 * Implement "EAT" action.
+* Implement full basic AI logic:
+  * Input = Status + Reward, from the World. [DONE] 
+  * Mind/policy run = hardcoded behaviours (random, herbivores, predators...). [DONE]
+  * Mind/policy learn = placeholder for the learning method. [DONE]
+  * Actions = Move, Eat, No-action. [DONE]
+
 
 World dynamics:
 

@@ -7,10 +7,13 @@
 import ai
 import ui
 
+# Constants
+NO_POSITION = (None, None)
+
 # Tiles definition:
 # Type of tile, aspect, color, intensity, position (not specified here).
 TILE_DEF = (
-    ("tile", "·", ui.BLACK, ui.BRIGHT, [None, None])
+    ("tile", "·", ui.BLUE, ui.NORMAL, NO_POSITION)
 )
 
 # Block definition:
@@ -23,10 +26,10 @@ TILE_DEF = (
 #   Position: (a tuple, currently ignored).
 
 BLOCKS_DEF = (
-    #   (None, "block", " ", ui.BLACK, ui.BRIGHT, [None, None]),
-    #   (4, "block2", "▛▜", ui.BLUE, ui.NORMAL, [None, None]),
-    #   (10, "fence", "#", ui.WHITE, ui.BRIGHT, [None, None]),
-    (60, "stone", "▧", ui.BLACK, ui.BRIGHT, [None, None]),
+    #   (None, "block", " ", ui.BLACK, ui.BRIGHT, NO_POSITION),
+    #   (4, "block2", "▛▜", ui.BLUE, ui.NORMAL, NO_POSITION),
+    #   (10, "fence", "#", ui.WHITE, ui.BRIGHT, NO_POSITION),
+    (60, "stone", "▢", ui.BLUE, ui.BRIGHT, NO_POSITION),
 )
 
 # Agent definition:
@@ -42,26 +45,36 @@ BLOCKS_DEF = (
 #       Bite power, amount of energy the agent can take with one bite.
 #       Step_cost, i.e. energy consumed per world step regardless of action.
 #       Move_cost, i.e. energy consumed for moving to an adjacent tile.
-#   Senses:
+#   Mind/perception:
 #       The function translating the environment into input for an agent's mind.
+#       It's not limited to the external world, and can include internal information (e.g. energy level).
 #       If None, ai.default_senses() is assigned.
-#   Mind:
-#       The cognitive function processing senses to output actions.
+#   Mind/action:
+#       The function processing perception to output actions.
 #       If None, a NO_ACTION will always be assumed.
+#   Mind/learning:
+#       The function updating the acting policy after an action is executed.
+#       In None, the learning step is simply skipped.
 
 AGENTS_DEF = (
-    (10, "buggy", "⚉", ui.GREEN, ui.BRIGHT, [None, None],
-     (100, 110, 5, -0.1, -0.1), None, ai.wanderer),
-    (1, "Omi", "Ω", ui.BLUE, ui.BRIGHT, [None, None],
-     (100, 110, 5, -0.1, -0.5), None, ai.wanderer),
-    (3, "killer", "Ж", ui.RED, ui.BRIGHT, [None, None],
-     (100, 110, 100, -0.1, -1), None, ai.wanderer),
-    (3, "foe", "Д", ui.MAGENTA, ui.BRIGHT, [None, None],
-     (100, 110, 10, -0.1, -1), None, ai.wanderer),
-    (5, "apple", "", ui.RED, ui.NORMAL, [None, None],
-     (20, 20, 0, -0.001, 0), None, None),
-    (5, "star", "*", ui.YELLOW, ui.BRIGHT, [None, None],
-     (30, 30, 0, 0, 0), None, None),
+    (10, "buggy", "⚉", ui.GREEN, ui.BRIGHT, NO_POSITION,
+     (100, 110, 5, -0.1, -0.1),
+     (None, ai.wanderer, None)),
+    (1, "Omi", "Ω", ui.BLUE, ui.BRIGHT, NO_POSITION,
+     (100, 110, 5, -0.1, -0.5),
+     (None, ai.wanderer, None)),
+    (3, "killer", "Ж", ui.RED, ui.BRIGHT, NO_POSITION,
+     (100, 110, 100, -0.1, -1),
+     (None, ai.wanderer, None)),
+    (3, "foe", "Д", ui.MAGENTA, ui.BRIGHT, NO_POSITION,
+     (100, 110, 10, -0.1, -1),
+     (None, ai.wanderer, None)),
+    (5, "apple", "", ui.RED, ui.NORMAL, NO_POSITION,
+     (20, 20, 0, -0.001, 0),
+     (None, None, None)),
+    (5, "star", "*", ui.YELLOW, ui.BRIGHT, NO_POSITION,
+     (30, 30, 0, 0, 0),
+     (None, None, None)),
 )
 
 
@@ -111,17 +124,18 @@ class Agent(Thing):
         self.step_cost = a_def[5][3]
         self.move_cost = a_def[5][4]
 
-        if a_def[6] is None:
-            self.senses = ai.default_senses
+        if a_def[6][0] is None:
+            self.perception = ai.default_perception
         else:
-            self.senses = a_def[6]
-        self.mind = a_def[7]
+            self.perception = a_def[6]
+        self.action = a_def[6][1]
+        self.learning = a_def[6][2]
 
         self.steps = 0
         # Initialize current_state, current_energy_delta and chosen_action.
         self.current_state = None
         self.current_energy_delta = 0
-        self.chosen_action = ai.NO_ACTION
+        self.chosen_action = ai.VOID_ACTION
         self.chosen_action_success = True
         Agent.num_agents += 1
 
@@ -152,10 +166,10 @@ class Agent(Thing):
         # - TODO: other inputs (e.g. messages...).
 
         # Default: Complete information, the whole world is visible.
-        if self.senses is None:
+        if self.perception is None:
             state = world
         else:
-            state = self.senses(self, world)
+            state = self.perception(self, world)
 
         return state
 
@@ -164,26 +178,41 @@ class Agent(Thing):
         # NOTE: 'world' is only passed in order to call auxiliary methods.
 
         # Default: No action.
-        if self.mind is None:
-            action = ai.NO_ACTION
+        if self.action is None:
+            action = ai.VOID_ACTION
         else:
-            action = self.mind(self, world, state)
+            action = self.action(self, world, state)
 
         return action
 
-    def update(self, action, success, action_energy_delta):
+    def update(self, success, action_energy_delta):
         # Update state of agent after trying some action.
+        # - State interpretation: stored in self.current_state
+        # - Action taken: stored in self.chosen_action
 
-        # Update internal variables.
+        # Update internal variables, aspect, etc.
         _ = self.update_energy(action_energy_delta)
         self.chosen_action_success = success
+        # TODO: Update aspect (character(s) used, color...)?
 
-        # TODO: Update aspect (character, color...)?
-
-        # TODO: Update policy (learning) based on:
-        #   self.current_state (S_t)
-        #   self.chosen_action (A_t)
-        #   self.current_energy_delta (r_t)
+        # Update policy (learning).
+        self.learn()
 
         # Now the 'step' is totally finished.
         self.steps += 1
+
+    def learn(self):
+        # Update policy of agent after trying some action based on:
+        # - (S_t): state interpretation, stored in self.current_state
+        # - (A_t): action taken, stored in self.chosen_action
+        # - (r_t): immediate reward, stored in self.current_energy_delta
+
+        # Default: No action.
+        if self.learning is None:
+            result = None
+        else:
+            result = self.learning(self,
+                                   self.current_state,
+                                   self.chosen_action,
+                                   self.current_energy_delta)
+        return result

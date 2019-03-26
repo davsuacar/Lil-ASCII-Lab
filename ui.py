@@ -347,13 +347,13 @@ class UI:
 
         # Tracked agent: Other information.
         self.tracker.addstr(3, 2, "{:<14}".format("AI:"), fg_color_pair)
-        if tracked_agent.mind is None:
+        if tracked_agent.action is None:
             text = "None"
         else:
-            text = tracked_agent.mind.__name__
+            text = tracked_agent.action.__name__
         self.tracker.addstr("{}".format(text), fg_bright_color_pair)
         self.tracker.addstr(4, 2, "{:<14}".format(" "), fg_color_pair)
-        self.tracker.addstr("{}".format(tracked_agent.senses.__name__), fg_bright_color_pair)
+        self.tracker.addstr("{}".format(tracked_agent.perception.__name__), fg_bright_color_pair)
 
         if tracked_agent.chosen_action_success:
             pair = fg_bright_color_pair
@@ -375,7 +375,7 @@ class UI:
         self.tracker.addstr(2, self.tracking_right_column, " Top Agents     Energy ", fg_bright_color_pair | curses.A_REVERSE)
         y = 3  # Initial line.
         agents_list = self.world.agents
-        for agent in filter(lambda a: a.mind is not None, agents_list):
+        for agent in filter(lambda a: a.action is not None, agents_list):
             agent_color_pair = self.pair(agent.color + agent.intensity, self.tracker_bg)
             if agent == tracked_agent:
                 prefix = "▶ "
