@@ -170,13 +170,13 @@ class World:
 
         return (self.steps * referential_spf) // 1
 
-    def place_at(self, thing, position=things.NO_POSITION, relocate=False):
+    def place_at(self, thing, position=things.RANDOM_POSITION, relocate=False):
         # If position is not defined, find a random free place and move the Thing there.
         # If position is defined,
         #       if not occupied, move a Thing to position;
         #       if occupied, relocate randomly if allowed by 'relocate', or fail otherwise.
         # Result of action: (True: success; False: fail).
-        if position == things.NO_POSITION:
+        if position == things.RANDOM_POSITION:
             # position not defined; try to find a random one.
             position, success = self.find_free_tile()
         else:
@@ -193,7 +193,7 @@ class World:
 
         if success:
             # The move is possible, relocate Thing.
-            if thing.position[0] is not None and thing.position[1] is not None:
+            if thing.position[0] is not None and thing.position[1] is not None:  # TODO: use .position wo [..]
                 # The Thing was already in the world; clear out old place.
                 self.things[thing.position[0], thing.position[1]] = None
             self.things[position[0], position[1]] = thing
@@ -259,6 +259,9 @@ class World:
         return False, position
 
     def step(self):
+        # Prepare world's info for step.
+        self.pre_step()
+
         # Run step over all "living" agents.
         for agent in filter(lambda a: a.energy > 0, self.agents):
             # Request action from agent based on world state.
@@ -268,7 +271,22 @@ class World:
             # Set new position, reward, other internal information.
             agent.update(success, energy_delta)
 
-        # Update the world's info
+        # Update the world's info after step.
+        self.post_step()
+
+    def pre_step(self):
+        # TODO: Prepare world's info before actually running core step() functionality.
+        pass
+
+    def post_step(self):
+        # Respawn appropriate dead agents on new random places.
+        for agent in filter(
+                            lambda a: a.energy <= 0 and a.recycling == things.RESPAWNABLE,
+                            self.agents
+                            ):
+            agent.respawn()
+            _ = self.place_at(agent)
+        # Update rest of world's internal info.
         self.agents.sort(key=lambda x: x.energy, reverse=True)
         self.steps += 1
 

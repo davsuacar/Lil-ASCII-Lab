@@ -8,12 +8,17 @@ import ai
 import ui
 
 # Constants
-NO_POSITION = (None, None)
+RANDOM_POSITION = (None, None)
+
+NON_RECHARGEABLE = None
+RECHARGEABLE = 'Rechargeable'  # TODO: Implement agent 2 agent energy donation.
+EVERLASTING = 'Everlasting'
+RESPAWNABLE = 'Respawnable'
 
 # Tiles definition:
 # Type of tile, aspect, color, intensity, position (not specified here).
 TILE_DEF = (
-    ("tile", "·", ui.BLUE, ui.NORMAL, NO_POSITION)
+    ("ground", "·", ui.BLUE, ui.NORMAL, RANDOM_POSITION)
 )
 
 # Block definition:
@@ -26,25 +31,30 @@ TILE_DEF = (
 #   Position: (a tuple, currently ignored).
 
 BLOCKS_DEF = (
-    #   (None, "block", " ", ui.BLACK, ui.BRIGHT, NO_POSITION),
-    #   (4, "block2", "▛▜", ui.BLUE, ui.NORMAL, NO_POSITION),
-    #   (10, "fence", "#", ui.WHITE, ui.BRIGHT, NO_POSITION),
-    (60, "stone", "▢", ui.BLUE, ui.BRIGHT, NO_POSITION),
+    #   (None, "full-block", " ", ui.BLACK, ui.BRIGHT, RANDOM_POSITION),
+    #   (10, "fence", "#", ui.WHITE, ui.BRIGHT, RANDOM_POSITION),
+    (60, "block", "▢", ui.BLUE, ui.BRIGHT, RANDOM_POSITION),
 )
 
 # Agent definition:
-#   Number of instances to place.
-#   Name, some descriptive text.
-#   Aspect: one single Unicode character (e.g. "𝝮").
-#   Color & intensity:  (see above).
+#   Number of instances to place (e.g. 10).
+#   Name, some descriptive text (e.g. "bug").
+#   Aspect: one single Unicode character (e.g. "⚉").
+#   Color & intensity:  (see ui.py module).
 #   Initial position (or RND). If more than one instance, it will be ignored.
 #
 #   Energy-related settings:
 #       Initial energy assigned at start.
 #       Maximum energy the agent can acquire.
 #       Bite power, amount of energy the agent can take with one bite.
-#       Step_cost, i.e. energy consumed per world step regardless of action.
+#       Step_cost, i.e. energy consumed on each world step regardless of action chosen.
 #       Move_cost, i.e. energy consumed for moving to an adjacent tile.
+#
+#   Recycling settings:
+#       'None':         regular loss; useless after death.
+#       'Rechargeable': regular loss; can be recharged after 'death'.
+#       'Everlasting':  NO loss regardless of energy taken.
+#           
 #   Mind/perception:
 #       The function translating the environment into input for an agent's mind.
 #       It's not limited to the external world, and can include internal information (e.g. energy level).
@@ -57,23 +67,26 @@ BLOCKS_DEF = (
 #       In None, the learning step is simply skipped.
 
 AGENTS_DEF = (
-    (10, "buggy", "⚉", ui.GREEN, ui.BRIGHT, NO_POSITION,
-     (100, 110, 5, -0.1, -0.1),
+    # Real minds:
+    (10, "bug", "⚉", ui.GREEN, ui.BRIGHT, RANDOM_POSITION,
+     (100, 110, 5, -0.1, -0.1), NON_RECHARGEABLE,
      (None, ai.wanderer, None)),
-    (1, "Omi", "Ω", ui.BLUE, ui.BRIGHT, NO_POSITION,
-     (100, 110, 5, -0.1, -0.5),
+    (2, "Omi", "Ω", ui.CYAN, ui.BRIGHT, RANDOM_POSITION,
+     (100, 110, 5, -0.1, -0.5), NON_RECHARGEABLE,
      (None, ai.wanderer, None)),
-    (3, "killer", "Ж", ui.RED, ui.BRIGHT, NO_POSITION,
-     (100, 110, 100, -0.1, -1),
+    (3, "killer", "Ж", ui.RED, ui.BRIGHT, RANDOM_POSITION,
+     (100, 110, 100, -0.1, -1), NON_RECHARGEABLE,
      (None, ai.wanderer, None)),
-    (3, "foe", "Д", ui.MAGENTA, ui.BRIGHT, NO_POSITION,
-     (100, 110, 10, -0.1, -1),
+    (3, "foe", "Д", ui.MAGENTA, ui.BRIGHT, RANDOM_POSITION,
+     (100, 110, 10, -0.1, -1), NON_RECHARGEABLE,
      (None, ai.wanderer, None)),
-    (5, "apple", "", ui.RED, ui.NORMAL, NO_POSITION,
-     (20, 20, 0, -0.001, 0),
+
+    # Mindless:
+    (5, "apple", "", ui.RED, ui.NORMAL, RANDOM_POSITION,
+     (20, 20, 0, -0.001, 0), RESPAWNABLE,
      (None, None, None)),
-    (5, "star", "*", ui.YELLOW, ui.BRIGHT, NO_POSITION,
-     (30, 30, 0, 0, 0),
+    (1, "star", "*", ui.YELLOW, ui.BRIGHT, RANDOM_POSITION,
+     (30, 30, 0, 0, 0), EVERLASTING,
      (None, None, None)),
 )
 
@@ -124,15 +137,21 @@ class Agent(Thing):
         self.step_cost = a_def[5][3]
         self.move_cost = a_def[5][4]
 
-        if a_def[6][0] is None:
+        # Attributes for recycling.
+        self.recycling = a_def[6]
+        self.original_color = self.color
+        self.original_intensity = self.intensity
+
+        # Agent's AI:
+        if a_def[7][0] is None:
             self.perception = ai.default_perception
         else:
-            self.perception = a_def[6]
-        self.action = a_def[6][1]
-        self.learning = a_def[6][2]
+            self.perception = a_def[7]
+        self.action = a_def[7][1]
+        self.learning = a_def[7][2]
 
-        self.steps = 0
         # Initialize current_state, current_energy_delta and chosen_action.
+        self.steps = 0
         self.current_state = None
         self.current_energy_delta = 0
         self.chosen_action = ai.VOID_ACTION
@@ -140,17 +159,25 @@ class Agent(Thing):
         Agent.num_agents += 1
 
     def update_energy(self, delta):
-        # Keep within 0 and agent's max_energy.
-        prev_energy = self.energy
-        self.energy = max(min(self.energy + delta, self.max_energy), 0)
-        self.current_energy_delta = self.energy - prev_energy
+        # Handle energy updates, including 'recycling' cases.
 
-        # Update aspect.
-        if self.energy <= 0:
-            # The agent is dead.
-            self.color, self.intensity = ui.DEAD_AGENT_COLOR
+        if self.recycling == EVERLASTING:
+            # No change to agent's energy despite the delta.
+            self.current_energy_delta = 0
+            energy_obtained = delta
+        else:
+            # Keep within 0 and agent's max_energy.
+            prev_energy = self.energy
+            self.energy = max(min(self.energy + delta, self.max_energy), 0)
+            self.current_energy_delta = self.energy - prev_energy
+            energy_obtained = self.current_energy_delta
 
-        return self.current_energy_delta
+            # Check for death condition:
+            if self.energy <= 0:
+                # Update aspect (RESPAWNEABLE condition handled by world).
+                self.color, self.intensity = ui.DEAD_AGENT_COLOR
+
+        return energy_obtained
 
     def choose_action(self, world):
         # First, update agent's interpretation of the world (its current_state).
@@ -216,3 +243,9 @@ class Agent(Thing):
                                    self.chosen_action,
                                    self.current_energy_delta)
         return result
+
+    def respawn(self):
+        # Restablish an agent back to its optimal state.
+        self.energy = self.max_energy
+        self.color = self.original_color
+        self.intensity = self.original_intensity

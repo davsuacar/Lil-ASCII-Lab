@@ -1,6 +1,6 @@
 # Backlog
 
-## AI
+## AI - Action
 
 HI:
 
@@ -9,7 +9,7 @@ HI:
   * Choose highest-energy adjacent target for food.
 
 * Create new AI for 'TBD':
-  * Escape from attacks: 
+  * Escape from attacks:
     * Prioritize moving over feeding/no-action.
     * Choose best direction?
   * Target highest-energy accessible (i.e. visible) targets.
@@ -18,7 +18,13 @@ LO:
 
 * Implement dynamics of basic attributes: inventory.
 
-## Senses - Perception (inputs)
+## AI - Perception
+
+HI:
+
+* ...
+
+LO:
 
 * Senses: Visual limitation (full world, subsection around agent, opacity of blocks...).
 * Messages from other agents.
@@ -48,16 +54,16 @@ Discarded:
 
 HI:
 
-* Implement advanced energy dynamics:
-  * a) fixed resources granting INSTANT recharge ("stars");
-  * b) mobile resources that:
-    b.1) can be picked, carried and dropped;
-    b.2) can be consumed, granting DELAYED recharge.
-* Maintain a count of number of instances per type of agent.
-* Consider agents' ability (yes/no) to "resurrect" if granted new energy.
+* ...
 
 LO:
 
+* Implement DELAYED recharge for agents?
+* Maintain a count of number of instances per type of agent.
+* Implement new agent's feature:
+  * agents that can be picked, carried and dropped (e.g. fruits).
+  * Rest of agents (can't be picked).
+* Consider agents' ability (yes/no) to "resurrect" if granted new energy.
 * Main loop: Decouple UI / AI refresh rates, e.g. one AI step every 5 UI steps.
 * Improve world generation with patterns of blocks.
 * Consider creating "hole" blocks, causing instant death.
@@ -72,15 +78,17 @@ TO BE DEFINED:
 
 HI:
 
-* ...
+* PEP8 coding conventions:
+  http://books.agiliq.com/projects/essential-python-tools/en/latest/linters.html
 
 LO:
 
 * Extract strings with program name, version, etc ("Lil' ASCII Lab"...). from code.
 * Restrict maximum size of the world.
-* Extract all world & character config. to external yaml files.
+* Extract all world & agents config. to external yaml files.
 * Add logging (using standard 'logging' module).
 * Add arguments to main program (module argparse).
+* Move all strings to ui.py or to yaml file(s), allowing L10N.
 
 
 # Available Features (add to README.md)
@@ -98,6 +106,9 @@ AI:
 
 World dynamics:
 
+* Implement new agent's energy dynamics:
+  * a) fixed resources always at full energy ("stars").
+  * b) mobile resources ("fruit") with limited energy.
 * Implement dynamics of basic attributes: energy (initialization, consumption, death).
 * Define dynamics at death. Once energy is 0, AI is no longer active.
 * Implement synchronized steps, e.g. 12 fps, 24 fps.
