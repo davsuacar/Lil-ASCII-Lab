@@ -54,7 +54,7 @@ Discarded:
 
 HI:
 
-* ...
+* Improve respawn (e.g. generalize agent's __init__ to clone a given agent?).
 
 LO:
 

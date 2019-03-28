@@ -71,14 +71,14 @@ AGENTS_DEF = (
     (10, "bug", "⚉", ui.GREEN, ui.BRIGHT, RANDOM_POSITION,
      (100, 110, 5, -0.1, -0.1), NON_RECHARGEABLE,
      (None, ai.wanderer, None)),
-    (2, "Omi", "Ω", ui.CYAN, ui.BRIGHT, RANDOM_POSITION,
-     (100, 110, 5, -0.1, -0.5), NON_RECHARGEABLE,
+    (4, "Omi", "Ω", ui.CYAN, ui.BRIGHT, RANDOM_POSITION,
+     (100, 110, 5, -0.1, -0.5), RESPAWNABLE,
      (None, ai.wanderer, None)),
     (3, "killer", "Ж", ui.RED, ui.BRIGHT, RANDOM_POSITION,
      (100, 110, 100, -0.1, -1), NON_RECHARGEABLE,
      (None, ai.wanderer, None)),
-    (3, "foe", "Д", ui.MAGENTA, ui.BRIGHT, RANDOM_POSITION,
-     (100, 110, 10, -0.1, -1), NON_RECHARGEABLE,
+    (4, "foe", "Д", ui.MAGENTA, ui.BRIGHT, RANDOM_POSITION,
+     (100, 110, 10, -0.1, -1), RESPAWNABLE,
      (None, ai.wanderer, None)),
 
     # Mindless:
@@ -150,13 +150,18 @@ class Agent(Thing):
         self.action = a_def[7][1]
         self.learning = a_def[7][2]
 
+        # Initialize internal variables.
+        self.initialize_state()
+
+        Agent.num_agents += 1
+
+    def initialize_state(self):
         # Initialize current_state, current_energy_delta and chosen_action.
         self.steps = 0
         self.current_state = None
         self.current_energy_delta = 0
         self.chosen_action = ai.VOID_ACTION
         self.chosen_action_success = True
-        Agent.num_agents += 1
 
     def update_energy(self, delta):
         # Handle energy updates, including 'recycling' cases.
@@ -249,3 +254,5 @@ class Agent(Thing):
         self.energy = self.max_energy
         self.color = self.original_color
         self.intensity = self.original_intensity
+        # Initialize internal variables.
+        self.initialize_state()
