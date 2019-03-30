@@ -264,7 +264,7 @@ class UI:
             x_screen = 0
             for x in range(self.world.width):
                 thing = self.world.things[x, y]
-                if thing == None:
+                if thing is None:
                     # Emtpy TILE here. May be highlighted.
                     tile = self.world.ground[x, y]
                     text = tile.aspect + self.spc_str
@@ -299,7 +299,7 @@ class UI:
                         self.board.addstr(self.world.height - y - 1, x_screen, thing.aspect, pair | curses.A_BOLD)
                         pair = self.pair(thing.color + thing.intensity, self.world.bg_color + self.world.bg_intensity)
                         self.board.addstr(self.spc_str, pair)
-                x_screen += 1 + self.spc_len  # X must follow specific spacing.
+                x_screen += 1 + self.spc_len  # X axis must follow specific spacing.
         self.board.noutrefresh()
 
     def draw_tracker(self):
@@ -347,29 +347,33 @@ class UI:
 
         # Tracked agent: Other information.
         self.tracker.addstr(3, 2, "{:<14}".format("AI:"), fg_color_pair)
+        """ TODO: Delete this code.
         if tracked_agent.action is None:
             text = "None"
         else:
             text = tracked_agent.action.__name__
-        self.tracker.addstr("{}".format(text), fg_bright_color_pair)
+        """
+        self.tracker.addstr("{}".format(tracked_agent.action.__name__), fg_bright_color_pair)
         self.tracker.addstr(4, 2, "{:<14}".format(" "), fg_color_pair)
         self.tracker.addstr("{}".format(tracked_agent.perception.__name__), fg_bright_color_pair)
+        self.tracker.addstr(5, 2, "{:<14}".format(" "), fg_color_pair)
+        self.tracker.addstr("{}".format(tracked_agent.learning.__name__), fg_bright_color_pair)
 
         if tracked_agent.chosen_action_success:
             pair = fg_bright_color_pair
         else:
             pair = bright_red_color_pair
-        self.tracker.addstr(6, 2, "{:<14}".format('Action:'), fg_color_pair)
+        self.tracker.addstr(7, 2, "{:<14}".format('Action:'), fg_color_pair)
         self.tracker.addstr("{} {}".format(tracked_agent.chosen_action[0], tracked_agent.chosen_action[1]), pair)
 
-        self.tracker.addstr(7, 2, "{:<14}".format('Carrying:'), fg_color_pair)
+        self.tracker.addstr(8, 2, "{:<14}".format('Carrying:'), fg_color_pair)
         self.tracker.addstr("{}".format('[]'), fg_bright_color_pair)
-        self.tracker.addstr(8, 2, "{:<14}".format('Message:'), fg_color_pair)
+        self.tracker.addstr(9, 2, "{:<14}".format('Message:'), fg_color_pair)
         self.tracker.addstr("{}".format('[]'), fg_bright_color_pair)
-        self.tracker.addstr(9, 2, "{:<14}".format('Explored:'), fg_color_pair)
+        self.tracker.addstr(10, 2, "{:<14}".format('Explored:'), fg_color_pair)
         self.tracker.addstr("{}".format('-'), fg_bright_color_pair)
-        self.tracker.addstr(10, 2, "{:<14}".format('Plc_holdr:'), fg_color_pair)
-        self.tracker.addstr("{}".format('012345678901234567890123456789'), fg_bright_color_pair)
+        self.tracker.addstr(11, 2, "{:<14}".format('Plc_holdr:'), fg_color_pair)
+        self.tracker.addstr("{}".format('-'), fg_bright_color_pair)
 
         # Rest of Things (agents, blocks?).
         self.tracker.addstr(2, self.tracking_right_column, " Top Agents     Energy ", fg_bright_color_pair | curses.A_REVERSE)
@@ -435,7 +439,7 @@ class UI:
             self.world.paused = False
         else:
             # Update keyboard options at bottom. Get keyboard input.
-            key = self.get_key_pressed("Speed(< ^ >) Stop(SPC) Select(TAB)")
+            key = self.get_key_pressed("Stop(SPC) Speed(< ^ >) Select(TAB)")
             self.world.process_key_stroke(key)
             user_break = False
 

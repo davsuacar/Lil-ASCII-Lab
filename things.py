@@ -70,22 +70,26 @@ AGENTS_DEF = (
     # Real minds:
     (10, "bug", "⚉", ui.GREEN, ui.BRIGHT, RANDOM_POSITION,
      (100, 110, 5, -0.1, -0.1), NON_RECHARGEABLE,
-     (None, ai.wanderer, None)),
+     (ai.full_info, ai.wanderer, ai.no_learning)),
+
     (4, "Omi", "Ω", ui.CYAN, ui.BRIGHT, RANDOM_POSITION,
      (100, 110, 5, -0.1, -0.5), RESPAWNABLE,
-     (None, ai.wanderer, None)),
-    (3, "killer", "Ж", ui.RED, ui.BRIGHT, RANDOM_POSITION,
+     (ai.full_info, ai.wanderer, ai.no_learning)),
+
+    (3, "killer", "Ѫ", ui.RED, ui.BRIGHT, RANDOM_POSITION,
      (100, 110, 100, -0.1, -1), NON_RECHARGEABLE,
-     (None, ai.wanderer, None)),
+     (ai.full_info, ai.wanderer, ai.no_learning)),
+
     (4, "foe", "Д", ui.MAGENTA, ui.BRIGHT, RANDOM_POSITION,
      (100, 110, 10, -0.1, -1), RESPAWNABLE,
-     (None, ai.wanderer, None)),
+     (ai.full_info, ai.wanderer, ai.no_learning)),
 
     # Mindless:
-    (5, "apple", "", ui.RED, ui.NORMAL, RANDOM_POSITION,
-     (20, 20, 0, -0.001, 0), RESPAWNABLE,
+    (5, "energy", "♥", ui.RED, ui.NORMAL, RANDOM_POSITION,
+     (50, 50, 0, -0.001, 0), RESPAWNABLE,
      (None, None, None)),
-    (1, "star", "*", ui.YELLOW, ui.BRIGHT, RANDOM_POSITION,
+
+    (1, "recharger", "*", ui.YELLOW, ui.BRIGHT, RANDOM_POSITION,
      (30, 30, 0, 0, 0), EVERLASTING,
      (None, None, None)),
 )
@@ -143,10 +147,7 @@ class Agent(Thing):
         self.original_intensity = self.intensity
 
         # Agent's AI:
-        if a_def[7][0] is None:
-            self.perception = ai.default_perception
-        else:
-            self.perception = a_def[7]
+        self.perception = a_def[7][0]
         self.action = a_def[7][1]
         self.learning = a_def[7][2]
 
@@ -162,6 +163,7 @@ class Agent(Thing):
         self.current_energy_delta = 0
         self.chosen_action = ai.VOID_ACTION
         self.chosen_action_success = True
+        self.learn_result = None
 
     def update_energy(self, delta):
         # Handle energy updates, including 'recycling' cases.
@@ -186,36 +188,11 @@ class Agent(Thing):
 
     def choose_action(self, world):
         # First, update agent's interpretation of the world (its current_state).
-        self.current_state = self.interpret_state(world)
-        # Now its "mind" is requested to choose an action.
-        self.chosen_action = self.run_policy(world, self.current_state)
+        self.current_state = self.perception(agent=self, world=world)
+        # Now its "acting mind" is requested to choose an action.
+        self.chosen_action = self.action(self.current_state)
 
         return self.chosen_action
-
-    def interpret_state(self, world):
-        # Extraction of the information available for the agent.
-        # - Based on its 'senses'.
-        # - TODO: other inputs (e.g. messages...).
-
-        # Default: Complete information, the whole world is visible.
-        if self.perception is None:
-            state = world
-        else:
-            state = self.perception(self, world)
-
-        return state
-
-    def run_policy(self, world, state):
-        # Policy function returning the action chosen by the agent based on state.
-        # NOTE: 'world' is only passed in order to call auxiliary methods.
-
-        # Default: No action.
-        if self.action is None:
-            action = ai.VOID_ACTION
-        else:
-            action = self.action(self, world, state)
-
-        return action
 
     def update(self, success, action_energy_delta):
         # Update state of agent after trying some action.
@@ -225,29 +202,16 @@ class Agent(Thing):
         # Update internal variables, aspect, etc.
         _ = self.update_energy(action_energy_delta)
         self.chosen_action_success = success
-        # TODO: Update aspect (character(s) used, color...)?
+        # TODO: Update aspect (character(s) displayed, color...)?
 
         # Update policy (learning).
-        self.learn()
+        self.learn_result = self.learning(
+            self.current_state,
+            self.chosen_action,
+            self.current_energy_delta)
 
         # Now the 'step' is totally finished.
         self.steps += 1
-
-    def learn(self):
-        # Update policy of agent after trying some action based on:
-        # - (S_t): state interpretation, stored in self.current_state
-        # - (A_t): action taken, stored in self.chosen_action
-        # - (r_t): immediate reward, stored in self.current_energy_delta
-
-        # Default: No action.
-        if self.learning is None:
-            result = None
-        else:
-            result = self.learning(self,
-                                   self.current_state,
-                                   self.chosen_action,
-                                   self.current_energy_delta)
-        return result
 
     def respawn(self):
         # Restablish an agent back to its optimal state.

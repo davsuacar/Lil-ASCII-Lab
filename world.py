@@ -262,8 +262,10 @@ class World:
         # Prepare world's info for step.
         self.pre_step()
 
-        # Run step over all "living" agents.
-        for agent in filter(lambda a: a.energy > 0, self.agents):
+        # Run step over all "living and acting" agents.
+        for agent in filter(lambda a:
+                            a.energy > 0 and a.action is not None,
+                            self.agents):
             # Request action from agent based on world state.
             action = agent.choose_action(world=self)
             # Try to execute action.
@@ -276,6 +278,10 @@ class World:
 
     def pre_step(self):
         # TODO: Prepare world's info before actually running core step() functionality.
+        
+        # TODO: Remove long-dead non-RECHARGEABLE agents.
+        pass
+        # TODO: Generate new energy?
         pass
 
     def post_step(self):

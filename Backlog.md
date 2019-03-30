@@ -2,92 +2,95 @@
 
 ## AI - Action
 
-HI:
+1.0:
 
 * Refine AI for 'wanderer':
   * Not to miss adjacent food when energy starts to be low.
   * Choose highest-energy adjacent target for food.
 
-* Create new AI for 'TBD':
+* Refine AI for 'wanderer':
   * Escape from attacks:
     * Prioritize moving over feeding/no-action.
     * Choose best direction?
+
+* Create AI for 'hunter':
+  * Not to miss adjacent food... ever!
+  * Choose highest-energy adjacent target for food.
+
+Future:
+
+* Refine wanderer / hunter:
   * Target highest-energy accessible (i.e. visible) targets.
 
-LO:
-
-* Implement dynamics of basic attributes: inventory.
+* Implement dynamics of inventory (grab, drop, max. weight...).
 
 ## AI - Perception
 
-HI:
+1.0:
 
-* ...
+* Visual limitation (full world, subsection around agent)
 
-LO:
+Future:
 
-* Senses: Visual limitation (full world, subsection around agent, opacity of blocks...).
 * Messages from other agents.
+* Visual limitation: opacity of blocks.
 * Other senses: (environment conditions, e.g. smell, lightness, rain, temperature...).
 
 ## UI - User Interface
 
-HI:
+1.0:
 
-* ...
+* Clean up tracker (remove placeholder).
 
-LO:
+Future:
 
 * Tracker (aesthetics): Review tracker's layout (split sub-areas?).
-* In Fast-Forward mode, consider skipping frames drawing?
 * Add color to logo at program exit.
 * Implement basic agent animation in "aspect" (2 or 3 looping chars).
 * Tracking: Maintain agents' heatmaps (where they've been around).
 * Handle resize terminal without exiting.
 * Detect when resizing the terminal would exceed screen dimensions.
 
-Discarded:
-
-* Implement graphic orientation signalling on agents to show orientation (e.g. a blinking arrow [▲ ▶ ▼ ◀] on one adyacent tile).
-
 ## World Dynamics
 
-HI:
+1.0:
 
 * Improve respawn (e.g. generalize agent's __init__ to clone a given agent?).
+* execute_action(): check for impossible "EAT" actions (e.g. on a Block).
 
-LO:
+Future:
 
+* Improve world generation with patterns of blocks.
+* Allow several 'respawn' options:
+  * Full start: all memories and learnings wiped out.
+  * Keep learnings: memories wiped out BUT learnings (the trained model(s)) are kept.
+  * Keep everything: memories are kept and so are learnings (it's basically a random jump).
+  * All cases: energy is refilled and new agent moved to a random position.
 * Implement DELAYED recharge for agents?
 * Maintain a count of number of instances per type of agent.
 * Implement new agent's feature:
   * agents that can be picked, carried and dropped (e.g. fruits).
   * Rest of agents (can't be picked).
-* Consider agents' ability (yes/no) to "resurrect" if granted new energy.
 * Main loop: Decouple UI / AI refresh rates, e.g. one AI step every 5 UI steps.
-* Improve world generation with patterns of blocks.
 * Consider creating "hole" blocks, causing instant death.
-
-TO BE DEFINED:
-
-* Action Space(s): discrete / continuous [DONE]
-* Timing: Sim-turned (not turn-based). [DONE]
-* State: Complete / incomplete information for agents. [DONE]
 
 ## Overall features
 
-HI:
+1.0:
 
-* PEP8 coding conventions:
-  http://books.agiliq.com/projects/essential-python-tools/en/latest/linters.html
-
-LO:
-
-* Extract strings with program name, version, etc ("Lil' ASCII Lab"...). from code.
 * Restrict maximum size of the world.
 * Extract all world & agents config. to external yaml files.
-* Add logging (using standard 'logging' module).
 * Add arguments to main program (module argparse).
+  * world to load (yaml file)
+  * seed ('latest', number)
+* PEP8 coding conventions:
+  http://books.agiliq.com/projects/essential-python-tools/en/latest/linters.html
+* Review TODO's and implement or move to backlog.
+
+Future:
+
+* Extract strings with program name, version, etc ("Lil' ASCII Lab"...). from code.
+* Add logging (using standard 'logging' module).
 * Move all strings to ui.py or to yaml file(s), allowing L10N.
 
 

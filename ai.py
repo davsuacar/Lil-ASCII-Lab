@@ -55,7 +55,8 @@ NO_LEARNING = None
 
 ###############################################################
 # Minds: Auxiliary functions
-#   Used by Perception and Action functions.
+#
+# Used by Perception and Action functions.
 
 def obtain_possible_moves(world, position, moves_delta_list):
     '''
@@ -80,56 +81,73 @@ def obtain_possible_bites(world, position, moves_delta_list):
     possible_bites = [delta for delta in moves_delta_list if world.tile_with_agent(position + delta)]
     return possible_bites
 
-
-def best_possible_bite(world, position, moves_delta_list):
-    '''
-    :param world:
-    :param position:
-    :param moves_delta_list:
-    :return: Return the delta from 'moves_delta_list' corresponding to the agent with higher energy in world. 
-    '''
-
-    possible_bites = [delta for delta in moves_delta_list if world.tile_with_agent(position + delta)]
-    
-    return possible_moves
-
-
 ###############################################################
 # Minds: Perception
 #
+# A 'perception' function extracts from the world and the agent itself
+# all the information an agent will need to make decisions based on its
+# 'action' function.
+#
+# - Input:
+#       - agent, the agent itself, for introspection of its state.
+#       - world, the environment in which the agent is.
+#
+# - Output:
+#       - state,  information in the shape the agent will be able to process.
+#         NOTE: This implies that "perception"'s output state must match
+#         "action"'s input state.
 
-def default_perception(action, world=None):
-    '''
-    :param world:
-    :return: Void Senses function, returning the world passed.
-    '''
 
-    return world
+def no_info(agent, world=None):
+    # Void perception function, the agent receives no information about world
+    # or itself. This is useful for passive agents not actually doing anything,
+    # e.g. some object or piece of food.
+
+    return None
+
+
+def full_info(agent, world=None):
+    # Full perception and access to agent and world is granted.
+    # This is useful to program 'hard-coded' AIs which directly access
+    # all current available information.
+    state = (agent, world)  # A tuple with both references.
+
+    return state
 
 
 ###############################################################
 # Minds: Action
 #
-# A function ('policy' in RL) selects an action at each step for the agent.
+# An 'action' function ('policy' in RL) selects an action at each step
+# for the agent.
 #
-# - Inputs:
-#       - agent.
+# - Input:
+#       - agent, the agent itself, for introspection of its state
 #       - world [used to query about empty tiles, etc.]. TODO: Eliminate need for 'world' arg.
 #       - state, the current state of the agent.
 #
-# - Outputs: the action chosen, as a list:
+# - Output: the action chosen, as a list:
 #       - action_type, e.g. MOVE, FEED, NONE.
 #       - action_arguments, e.g. [-1, 1], [].
 #       - action_energy_ratio, the cost invested in the action,
 #         as a multiplier of agent.move_cost, e.g. 1.0, 0.0, 4.0.
 
+def passive(state=None):
+    # Void action function, the agent does not interact with the world.
+    # This is useful for passive agents not actually doing anything,
+    # e.g. some object or piece of food.
 
-def wanderer(agent, world, state=None):
-    '''
-    :param agent: passed for agent's introspection of its state.
-    :param world: only passed in order to call auxiliary methods.
-    :return: It chooses random moves, stopping from time to time. Some parametrizable inertia gives continuity to successful moves.
-    '''
+    return ai.VOID_ACTION
+
+
+def wanderer(state=None):
+    # A hard-coded AI modelling these basic behaviours:
+    # - Some inertia for time-consistent movements or eating actions.
+    # - Capability to start moves on clear directions, though it can stumble on
+    #   other objects later (out of inertia).
+    # - Capability to eat from adjacent objects at times.
+
+    agent, world = state  # Extract both complete objects from tuple.
 
     inertia_prob = 0.66  # Probability of repeating latest action.
     stopping_prob = 0.1  # Probability of stopping vs. doing something.
@@ -161,12 +179,9 @@ def wanderer(agent, world, state=None):
     return action
 
 
-def wanderer2(agent, world, state=None):
-    '''
-    :param agent: passed for agent's introspection of its state.
-    :param world: only passed in order to call auxiliary methods.
-    :return: It chooses random moves, stopping from time to time. Some parametrizable inertia gives continuity to successful moves.
-    '''
+def wanderer2(state=None):
+
+    agent, world = state  # Extract both complete objects.
 
     hunger_threshold = 0.6  # Energy ratio below which eating is prioritary.
 
@@ -181,3 +196,26 @@ def wanderer2(agent, world, state=None):
     """
 
     return action
+
+###############################################################
+# Minds: Learning
+#
+# A 'learning' function updates the policy of the agent
+# after trying some action based on:
+#
+# - Input:
+#       - (S_t): state interpretation, stored in self.current_state
+#       - (A_t): action taken, stored in self.chosen_action
+#       - (r_t): immediate reward, stored in self.current_energy_delta
+#
+# - Output:
+#       - result: some quantification of the learning performed,
+#         (bound to the learning algorithm).
+
+
+def no_learning(state, action, reward):
+    # Void learning function; the agent doesn't perform any modification
+    # of its policy.
+    # This is useful for 'hard-coded' non-Machine-Learning AIs.
+
+    return None
