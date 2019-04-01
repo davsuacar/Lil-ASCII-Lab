@@ -14,20 +14,20 @@ import ui
 
 # World definition:
 
-WORLD_DEF = {
-    "name": "Random Blox",
-    "width": 20,  # x from 0 to width - 1
-    "height": 15,  # y from 0 to height - 1
-    "bg_color": ui.BLACK,  # background color (see ui.py module).
-    "bg_intensity": ui.NORMAL,  # background intensity (NORMAL or BRIGHT).
-    "n_blocks_rnd": 0.4,  # % of +/- randomness in number of blocks [0, 1]
-    "max_steps": None,  # How long to run the world ('None' for infinite loop).
-    "fps": 5,  # Frames-Per-Second, i.e. number of steps run per second.
-    "random_seed": None,  # Seed for reproducible runs (None for random).
-}
+WORLD_DEF = dict(
+    name="Random Blox",
+    width=20,  # x from 0 to width - 1
+    height=15,  # y from 0 to height - 1
+    bg_color=ui.BLACK,  # background color (see ui.py module).
+    bg_intensity=ui.NORMAL,  # background intensity (NORMAL or BRIGHT).
+    n_blocks_rnd=0.4,  # % of +/- randomness in number of blocks [0, 1]
+    max_steps=None,  # How long to run the world ('None' for infinite loop).
+    fps=5,  # Frames-Per-Second, i.e. number of steps run per second.
+    random_seed=None,  # Seed for reproducible runs (None for random).
+)
 
 # Simulation definition:
-# Theses are the settings provided to the world:
+# These are the settings provided to the simulation:
 Simulation_def = (
     WORLD_DEF,  # Some specific world definition.
     things.TILE_DEF,  # The tiles it will contain.
@@ -73,7 +73,8 @@ class World:
         random.seed(seed)
 
         self.steps = 0
-        self.things = np.full((self.width, self.height), None)  # Create grid for agents and blocks.
+        self.things = np.full((self.width, self.height), None)  # A grid for agents and blocks.
+        self.energy_map = np.zeros((self.width, self.height))  # A grid tracking energy on each tile.
 
         # Put TILES on the ground.
         self.ground = np.full((self.width, self.height), None)  # Fill in the basis of the world.
@@ -96,10 +97,12 @@ class World:
                     agent_suffix = i
                 agent = things.Agent(a[1:], agent_suffix)
                 # Put agent in the world on requested position, relocating on colisions (on failure, Agent is ignored).
-                _ = self.place_at(agent, agent.position, relocate=True)
-                self.agents.append(agent)
-                if self.tracked_agent is None:
-                    self.tracked_agent = agent
+                success = self.place_at(agent, agent.position, relocate=True)
+                if success:
+                    # Update agents list and tracked_agent (only the first time).
+                    self.agents.append(agent)
+                    if self.tracked_agent is None:
+                        self.tracked_agent = agent
 
         # Put in some BLOCKS, quantity based on width,
         self.blocks = []
@@ -192,11 +195,15 @@ class World:
                 success = False
 
         if success:
-            # The move is possible, relocate Thing.
+            # The move is possible, (re)locate Thing.
             if thing.position[0] is not None and thing.position[1] is not None:  # TODO: use .position wo [..]
-                # The Thing was already in the world; clear out old place.
+                # The Thing was already in the world; clear out old place and update energy_map.
                 self.things[thing.position[0], thing.position[1]] = None
+                self.energy_map[thing.position[0], thing.position[1]] = 0
+
             self.things[position[0], position[1]] = thing
+            if isinstance(thing, things.Agent):
+                self.energy_map[position[0], position[1]] = thing.energy
             thing.position = position
 
         return success
@@ -231,10 +238,10 @@ class World:
         x0, y0 = x, y  # Starting position to search from.
         success = True
         while not found and success:
-            x = (x + 1) % self.width  # Increment x not exceeding width
-            if x == 0:  # When x is back to 0, increment y not exceeding height
+            x = (x + 1) % self.width  # Increment x not exceeding width.
+            if x == 0:  # When x is back to 0, increment y not exceeding height.
                 y = (y + 1) % self.height
-            if self.tile_is_empty([x, y]):  # Check "success" condition
+            if self.tile_is_empty([x, y]):  # Check "success" condition.
                 found = True
             elif (x, y) == (x0, y0):  # Failed if loop over the world is complete.
                 success = False
@@ -242,12 +249,12 @@ class World:
         return [x, y], success
 
     def get_adjacent_empty_tiles(self, position):
-        # Return a list with all adjacent empty tiles, respecting world's borders
+        # Return a list with all adjacent empty tiles, respecting world's borders.
         x0, y0 = position
         tiles = []
         for x_inc in (-1, 0, 1):
             for y_inc in (-1, 0, 1):
-                if (x_inc, y_inc) != (0, 0):  # Skipping tile on which agent stands
+                if (x_inc, y_inc) != (0, 0):  # Skipping tile on which agent stands.
                     if self.tile_is_empty([x0 + x_inc, y0 + y_inc]):
                         tiles.append((x0 + x_inc, y0 + y_inc))
 
@@ -270,7 +277,7 @@ class World:
             action = agent.choose_action(world=self)
             # Try to execute action.
             success, energy_delta = self.execute_action(agent, action)
-            # Set new position, reward, other internal information.
+            # Update agent's learnings and other internal information.
             agent.update(success, energy_delta)
 
         # Update the world's info after step.
@@ -308,11 +315,11 @@ class World:
             action_delta = 0
 
         elif action_type == ai.NONE:
-            # Rest action
+            # Rest action.
             success = True
 
         elif action_type == ai.MOVE:
-            # Check destination tile is free.
+            # Try the move, checking if destination tile is free.
             success = self.place_at(agent,
                                     [agent.position[0] + action_arguments[0],
                                      agent.position[1] + action_arguments[1]]

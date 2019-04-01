@@ -40,7 +40,7 @@ Future:
 
 1.0:
 
-* Clean up tracker (remove placeholder).
+* Add step-by-step control in "pause" menu to move fwd. 1 step.
 
 Future:
 

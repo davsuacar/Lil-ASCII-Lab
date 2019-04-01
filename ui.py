@@ -41,27 +41,27 @@ LOW_ENERGY_THRESHOLD = 0.20  # Below this % energy is displayed as dangerously l
 DEAD_AGENT_COLOR = (BLACK, BRIGHT)
 
 # Output settings: Define how I/O will happen:
-UI_def = {
-    "resize_term": True,  # Flag to allows resizing the actual terminal where program runs.
-    "spacing": 1,  # Number of 'spc' chars to concatenate at the right of every tile (for an even vert/horiz aspect ratio).
-    "extend_blocks": False,  # Whether blocks will be doubled to cover "holes".
-    "min_ui_width": 20,  # Minimum width for the text interface, regardless of board size.
-    "min_ui_height": 15,  # Minimum height for the text interface, regardeless of board size.
-    "max_size": 100,  # Maximum size for width of height for the world (TODO: manage too big worlds).
-    "header2_width": 6,  # Header space reserved for " LIVE ", "PAUSED", etc.
-    "tracking_width": 60,  # Width for the tracking space will be set up on the right.
-    "tracking_right_column": 36,  # Column where the right section of the tracker starts.
-    "name_length": 10,  # Maximum length displayed of agents' names.
-    "window_bg": BLACK,  # BG color of the full terminal window.
-    "header_fg": WHITE + BRIGHT,  # FG color of the TITLE of the world.
-    "header_bg": BLUE + NORMAL,  # BG color of the TITLE of the world.
-    "header_bg2": RED + BRIGHT,  # BG color of the shorter special field.
-    "header_bg3": MAGENTA + NORMAL,  # Special BG color of the shorter special field.
-    "footer_fg": BLACK + NORMAL,  # FG color of the FOOTER.
-    "footer_bg": WHITE + NORMAL,  # BG color of the FOOTER.
-    "tracker_fg": GREEN,  # FG color of the Tracker window.
-    "tracker_bg": BLACK + NORMAL,  # BF color of the Tracker window.
-}
+UI_def = dict(
+    resize_term=True,  # Flag to allows resizing the actual terminal where program runs.
+    spacing=1,  # Number of 'spc' chars to concatenate at the right of every tile (for an even vert/horiz aspect ratio).
+    extend_blocks=False,  # Whether blocks will be doubled to cover holes.
+    min_ui_width=20,  # Minimum width for the text interface, regardless of board size.
+    min_ui_height=15,  # Minimum height for the text interface, regardeless of board size.
+    max_size=100,  # Maximum size for width of height for the world (TODO=manage too big worlds).
+    header2_width=6,  # Header space reserved for "LIVE", "PAUSED", etc.
+    tracking_width=60,  # Width for the tracking space will be set up on the right.
+    tracking_right_column=36,  # Column where the right section of the tracker starts.
+    name_length=10,  # Maximum length displayed of agents' names.
+    window_bg=BLACK,  # BG color of the full terminal window.
+    header_fg=WHITE + BRIGHT,  # FG color of the TITLE of the world.
+    header_bg=BLUE + NORMAL,  # BG color of the TITLE of the world.
+    header_bg2=RED + BRIGHT,  # BG color of the shorter special field.
+    header_bg3=MAGENTA + NORMAL,  # Special BG color of the shorter special field.
+    footer_fg=BLACK + NORMAL,  # FG color of the FOOTER.
+    footer_bg=WHITE + NORMAL,  # BG color of the FOOTER.
+    tracker_fg=GREEN,  # FG color of the Tracker window.
+    tracker_bg=BLACK + NORMAL,  # BF color of the Tracker window.
+)
 
 
 ###############################################################
@@ -76,7 +76,7 @@ class UI:
         # Check IO settings.
         self.resize_term = UI_def["resize_term"]
         self.spc_len = UI_def["spacing"]  # Multiplier for tiles spacing.
-        self.spc_str = " " * self.spc_len  # Doubling columns for esthetic reasons.
+        self.spc_str = " " * self.spc_len  # Doubling columns for aesthetic reasons.
         self.extend_blocks = UI_def["extend_blocks"]
         self.tracker_width = UI_def["tracking_width"]
         self.tracking_right_column = UI_def["tracking_right_column"]

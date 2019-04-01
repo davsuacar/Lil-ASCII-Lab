@@ -15,36 +15,33 @@ NONE = "NONE"
 MOVE = "MOVE"
 EAT = "EAT"
 
-# (x, y) deltas for all 8 possible adjacent tiles.
+# (x, y) deltas for all 8 possible adjacent tiles (excluding (0,0)).
 XY_X1_DELTAS = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
 XY_X1_ICONS = ("◣", "◀", "◤", "▼", "▲", "◢", "▶", "◥")
 
 # Actions definition:
 # An action consists of a verb and some arguments, expressed between brackets here.
 
-ACTIONS_DEF = {
-    NONE:  # PASSIVE action.
-    (  # No arguments.
+ACTIONS_DEF = dict(
+    NONE=(  # PASSIVE action.
         [],  # Arguments: Not required.
         0.0  # Energy ratio: 0x -> No energy consumption.
     ),
 
-    MOVE:  # MOVING to adjacent relative coordinates.
-    (  # 2 arguments with 8 possible values (excluding (0,0)).
-        np.array(  # [x, y] deltas for a given [x0, y0]
+    MOVE=(  # MOVING to adjacent relative coordinates.
+        np.array(  # 2 arguments ([x, y] delta) for a given [x0, y0]
             XY_X1_DELTAS
-        ),
+          ),
         1.0  # Energy ratio: 1x -> Unmodified ratio for 1-tile moves.
     ),
 
-    EAT:  # EATING energy from adjacent relative coordinates.
-    (  # 2 arguments with 8 possible values (excluding (0,0)).
-        np.array(  # [x, y] deltas for a given [x0, y0]
+    EAT=(  # EATING energy from adjacent relative coordinates.
+        np.array(  # 2 arguments ([x, y] delta) for a given [x0, y0]
             XY_X1_DELTAS
         ),
         0.0  # Energy ratio: 0x -> No energy consumption.
     ),
-}
+)
 
 VOID_ACTION = [NONE, ACTIONS_DEF[NONE][0], ACTIONS_DEF[NONE][1]]
 
@@ -66,7 +63,8 @@ def obtain_possible_moves(world, position, moves_delta_list):
     :return: Return a list with the deltas from 'moves_delta_list' which if applied to given 'position', would land on an emptly tile in 'world'.
     '''
 
-    possible_moves = [delta for delta in moves_delta_list if world.tile_is_empty(position + delta)]
+    possible_moves = [delta for delta in moves_delta_list
+                      if world.tile_is_empty(position + delta)]
     return possible_moves
 
 
@@ -78,7 +76,21 @@ def obtain_possible_bites(world, position, moves_delta_list):
     :return: Return a list with the deltas from 'moves_delta_list' which, if biting to given 'position', would bite some agent in 'world'.
     '''
 
-    possible_bites = [delta for delta in moves_delta_list if world.tile_with_agent(position + delta)]
+    possible_bites = [delta for delta in moves_delta_list
+                      if world.tile_with_agent(position + delta)]
+    return possible_bites
+
+
+def obtain_best_bite(world, position, moves_delta_list):
+    '''
+    :param world:
+    :param position:
+    :param moves_delta_list:
+    :return: Return a list with the deltas from 'moves_delta_list' which, if biting to given 'position', would bite some agent in 'world'.
+    '''
+
+    possible_bites = [delta for delta in moves_delta_list
+                      if world.tile_with_agent(position + delta)]
     return possible_bites
 
 ###############################################################
@@ -180,6 +192,11 @@ def wanderer(state=None):
 
 
 def wanderer2(state=None):
+    # A hard-coded AI modelling these basic behaviours:
+    # - Some inertia for time-consistent movements or eating actions.
+    # - Capability to start moves on clear directions, though it can stumble on
+    #   other objects later (out of inertia).
+    # - Capability to eat from adjacent objects at times.
 
     agent, world = state  # Extract both complete objects.
 

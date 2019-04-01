@@ -166,25 +166,26 @@ class Agent(Thing):
         self.learn_result = None
 
     def update_energy(self, delta):
-        # Handle energy updates, including 'recycling' cases.
+        # Handle 'energy' updates, including 'recycling' cases.
+        # Updates 'aspect' if needed.
 
         if self.recycling == EVERLASTING:
             # No change to agent's energy despite the delta.
             self.current_energy_delta = 0
-            energy_obtained = delta
+            energy_used = delta
         else:
             # Keep within 0 and agent's max_energy.
             prev_energy = self.energy
             self.energy = max(min(self.energy + delta, self.max_energy), 0)
             self.current_energy_delta = self.energy - prev_energy
-            energy_obtained = self.current_energy_delta
+            energy_used = self.current_energy_delta
 
             # Check for death condition:
             if self.energy <= 0:
                 # Update aspect (RESPAWNEABLE condition handled by world).
                 self.color, self.intensity = ui.DEAD_AGENT_COLOR
 
-        return energy_obtained
+        return energy_used
 
     def choose_action(self, world):
         # First, update agent's interpretation of the world (its current_state).
@@ -194,13 +195,11 @@ class Agent(Thing):
 
         return self.chosen_action
 
-    def update(self, success, action_energy_delta):
-        # Update state of agent after trying some action.
-        # - State interpretation: stored in self.current_state
-        # - Action taken: stored in self.chosen_action
+    def update(self, success, action_energy_delta):  # Drop arg. action_energy_delta
+        # Update internal state of agent after trying some action.
 
         # Update internal variables, aspect, etc.
-        _ = self.update_energy(action_energy_delta)
+        _ = self.update_energy(action_energy_delta)  # TODO: Move to world's execute_action()
         self.chosen_action_success = success
         # TODO: Update aspect (character(s) displayed, color...)?
 
