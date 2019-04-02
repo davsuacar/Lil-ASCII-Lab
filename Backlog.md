@@ -40,7 +40,7 @@ Future:
 
 1.0:
 
-* Add step-by-step control in "pause" menu to move fwd. 1 step.
+* Add Tab control during step-by-step mode.
 
 Future:
 
@@ -120,6 +120,7 @@ World dynamics:
 
 UI:
 
+* Add step-by-step control in "pause" menu to move fwd. 1 step.
 * Tracker: Show current world speed (at fps, full-speed).
 * Tracker: Tab selects only living agents with some mind.
 * Tracker: Show agents with minds only (not mindless "resources").

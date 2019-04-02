@@ -225,7 +225,7 @@ class UI:
         self.footer.noutrefresh()
 
     def ask(self, question):
-        # Ask user for input on footer zone.
+        # Ask user for TEXT input on footer zone.
         # But first, signal the simulation is paused.
         pair = self.pair(self.header_fg, self.header_bg3)
         self.draw_header2("PAUSED", pair)
@@ -239,6 +239,24 @@ class UI:
                             pair | curses.A_BLINK)
         self.footer.refresh()
         answer = self.footer.getkey()
+        self.footer.nodelay(True)  # Back to "nodelay" mode.
+        return answer
+
+    def ask_key(self, question):
+        # Ask user for KEY input on footer zone.
+        # But first, signal the simulation is paused.
+        pair = self.pair(self.header_fg, self.header_bg3)
+        self.draw_header2("PAUSED", pair)
+
+        curses.flushinp()  # Throw away any typeahead not yet processed.
+        self.footer.nodelay(False)  # So that getkey() waits for a key press.
+        self.footer.erase()  # Erase footer window.
+        pair = self.pair(self.footer_fg, self.footer_bg)
+        self.footer.addnstr(0, 0, question.ljust(self.board_width - 1),
+                            self.footer.getmaxyx()[1] - 2,
+                            pair | curses.A_BLINK)
+        self.footer.refresh()
+        answer = self.footer.getch()
         self.footer.nodelay(True)  # Back to "nodelay" mode.
         return answer
 
@@ -439,9 +457,8 @@ class UI:
             self.world.paused = False
         elif self.world.step_by_step:
             # Check for next step or back to normal play.
-            answer = self.ask(" Press to continue... (▼ for step) ")
-            if answer != "KEY_DOWN":
-                self.world.step_by_step = False
+            key = self.ask_key(" Press to continue... (▼ for step) ")
+            self.world.process_key_stroke(key)
             user_break = False
         else:
             # Update keyboard options at bottom. Get keyboard input.

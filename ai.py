@@ -16,7 +16,7 @@ MOVE = "MOVE"
 EAT = "EAT"
 
 # (x, y) deltas for all 8 possible adjacent tiles (excluding (0,0)).
-XY_X1_DELTAS = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
+XY_8_DELTAS = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
 XY_X1_ICONS = ("◣", "◀", "◤", "▼", "▲", "◢", "▶", "◥")
 
 # Actions definition:
@@ -30,14 +30,14 @@ ACTIONS_DEF = dict(
 
     MOVE=(  # MOVING to adjacent relative coordinates.
         np.array(  # 2 arguments ([x, y] delta) for a given [x0, y0]
-            XY_X1_DELTAS
+            XY_8_DELTAS
           ),
         1.0  # Energy ratio: 1x -> Unmodified ratio for 1-tile moves.
     ),
 
     EAT=(  # EATING energy from adjacent relative coordinates.
         np.array(  # 2 arguments ([x, y] delta) for a given [x0, y0]
-            XY_X1_DELTAS
+            XY_8_DELTAS
         ),
         0.0  # Energy ratio: 0x -> No energy consumption.
     ),

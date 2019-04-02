@@ -347,7 +347,7 @@ class World:
         else:
             raise Exception('Invalid action type passed: {}.'.format(action_type))
 
-        # Update energies for agent.
+        # Update energy for agent and world.
         _ = agent.update_energy(energy_delta)  # Dropped energy is lost.
         self.energy_map[agent.position[0], agent.position[1]] = agent.energy
 
@@ -372,14 +372,19 @@ class World:
             pass
         elif key in [ui.KEY_LEFT, ui.KEY_SLEFT]:  # Slow down speed.
             self.update_fps(fps_factor=0.5)
+            self.step_by_step = False
         elif key in [ui.KEY_RIGHT, ui.KEY_SRIGHT]:  # Faster speed.
             self.update_fps(fps_factor=2.0)
+            self.step_by_step = False
         elif key in [ui.KEY_UP]:  # Go full speed!
             self.update_fps(fps_factor=None)
+            self.step_by_step = False
         elif key in [ui.KEY_DOWN]:  # Go step-by-step.
+            self.paused = False
             self.step_by_step = True
         elif key == ord(' '):  # Pause the world.
             self.paused = True
+            self.step_by_step = False
         elif key == ord('\t'):  # Track a different agent.
             initial_idx = idx = self.agents.index(self.tracked_agent)
             next_agent = None
