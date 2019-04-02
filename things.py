@@ -195,11 +195,10 @@ class Agent(Thing):
 
         return self.chosen_action
 
-    def update(self, success, action_energy_delta):  # Drop arg. action_energy_delta
+    def update(self, success):
         # Update internal state of agent after trying some action.
 
         # Update internal variables, aspect, etc.
-        _ = self.update_energy(action_energy_delta)  # TODO: Move to world's execute_action()
         self.chosen_action_success = success
         # TODO: Update aspect (character(s) displayed, color...)?
 

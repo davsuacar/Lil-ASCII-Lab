@@ -437,9 +437,15 @@ class UI:
             answer = self.ask(" Press to continue... (Q to quit) ")
             user_break = answer in ["Q", "q"]
             self.world.paused = False
+        elif self.world.step_by_step:
+            # Check for next step or back to normal play.
+            answer = self.ask(" Press to continue... (▼ for step) ")
+            if answer != "KEY_DOWN":
+                self.world.step_by_step = False
+            user_break = False
         else:
             # Update keyboard options at bottom. Get keyboard input.
-            key = self.get_key_pressed("Stop(SPC) Speed(< ^ >) Select(TAB)")
+            key = self.get_key_pressed("Stop(SPC) Speed(◀ ▲ ▼ ▶) Select(TAB)")
             self.world.process_key_stroke(key)
             user_break = False
 

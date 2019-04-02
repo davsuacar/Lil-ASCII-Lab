@@ -62,7 +62,8 @@ class World:
         # Time and speed settings.
         self.initialize_fps(w_def["fps"])
 
-        self.paused = False
+        self.paused = False  # Whether the user has paused simulation.
+        self.step_by_step = False  # Whether the user has activated step-by-step.
         self.creation_time = time.time
 
         # Initialize world: randomness, steps and list of 'things' on it.
@@ -183,9 +184,9 @@ class World:
             # position not defined; try to find a random one.
             position, success = self.find_free_tile()
         else:
-            # position is defined; check if it is empty.
-            if self.tile_is_empty(position):
-                # position is empty: success!
+            # position is defined; check if it is empty (or the current one).
+            if self.tile_is_empty(position) or position == thing.position:
+                # position is empty (or already the current one): success!
                 success = True
             elif relocate:
                 # position is occupied, try to relocate as requested.
@@ -197,13 +198,10 @@ class World:
         if success:
             # The move is possible, (re)locate Thing.
             if thing.position[0] is not None and thing.position[1] is not None:  # TODO: use .position wo [..]
-                # The Thing was already in the world; clear out old place and update energy_map.
+                # The Thing was already in the world; clear out old place.
                 self.things[thing.position[0], thing.position[1]] = None
-                self.energy_map[thing.position[0], thing.position[1]] = 0
 
             self.things[position[0], position[1]] = thing
-            if isinstance(thing, things.Agent):
-                self.energy_map[position[0], position[1]] = thing.energy
             thing.position = position
 
         return success
@@ -278,7 +276,7 @@ class World:
             # Try to execute action.
             success, energy_delta = self.execute_action(agent, action)
             # Update agent's learnings and other internal information.
-            agent.update(success, energy_delta)
+            agent.update(success)
 
         # Update the world's info after step.
         self.post_step()
@@ -313,13 +311,15 @@ class World:
             # Not enough energy for the move.
             success = False
             action_delta = 0
+            energy_delta = action_delta + agent.step_cost
 
         elif action_type == ai.NONE:
             # Rest action.
             success = True
+            energy_delta = action_delta + agent.step_cost
 
         elif action_type == ai.MOVE:
-            # Try the move, checking if destination tile is free.
+            # Update locations [try to], checking if destination tile is free.
             success = self.place_at(agent,
                                     [agent.position[0] + action_arguments[0],
                                      agent.position[1] + action_arguments[1]]
@@ -327,23 +327,30 @@ class World:
             if not success:
                 action_delta = 0
                 # TODO: Penalize collisions through energy_delta?
+            energy_delta = action_delta + agent.step_cost
 
         elif action_type == ai.EAT:
+            # Eating action.
             prey = self.things[agent.position[0] + action_arguments[0],
                                agent.position[1] + action_arguments[1]]
             if prey is not None:
                 # Take energy from prey (limited by prey's energy).
                 energy_taken = prey.update_energy(-agent.bite_power)
+                self.energy_map[prey.position[0], prey.position[1]] = prey.energy
                 action_delta += - energy_taken
                 success = action_delta > 0
             else:
                 success = False
                 action_delta = 0
+            energy_delta = action_delta + agent.step_cost
 
         else:
             raise Exception('Invalid action type passed: {}.'.format(action_type))
 
-        energy_delta = action_delta + agent.step_cost
+        # Update energies for agent.
+        _ = agent.update_energy(energy_delta)  # Dropped energy is lost.
+        self.energy_map[agent.position[0], agent.position[1]] = agent.energy
+
         return success, energy_delta
 
     def is_end_loop(self):
@@ -369,6 +376,8 @@ class World:
             self.update_fps(fps_factor=2.0)
         elif key in [ui.KEY_UP]:  # Go full speed!
             self.update_fps(fps_factor=None)
+        elif key in [ui.KEY_DOWN]:  # Go step-by-step.
+            self.step_by_step = True
         elif key == ord(' '):  # Pause the world.
             self.paused = True
         elif key == ord('\t'):  # Track a different agent.
