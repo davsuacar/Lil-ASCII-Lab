@@ -246,7 +246,7 @@ class World:
 
         return [x, y], success
 
-    def get_adjacent_empty_tiles(self, position):
+    def get_adjacent_empty_tiles(self, position):  # TODO: Allow x4 adjacence.
         # Return a list with all adjacent empty tiles, respecting world's borders.
         x0, y0 = position
         tiles = []
@@ -282,11 +282,17 @@ class World:
         self.post_step()
 
     def pre_step(self):
-        # TODO: Prepare world's info before actually running core step() functionality.
+        # Prepare world's info before actually running core step() functionality.
         
-        # TODO: Remove long-dead non-RECHARGEABLE agents.
+        # Reset agents' step variables.
+        # map(lambda x: x.pre_step, self.agents)
+        for agent in self.agents:
+            agent.current_energy_delta = 0
+
+        # TODO: Generate new energy in the world?
         pass
-        # TODO: Generate new energy?
+
+        # TODO: Remove long-dead non-RECHARGEABLE agents.
         pass
 
     def post_step(self):

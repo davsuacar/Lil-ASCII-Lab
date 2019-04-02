@@ -165,6 +165,10 @@ class Agent(Thing):
         self.chosen_action_success = True
         self.learn_result = None
 
+    def pre_step(self):
+        # Reset agents' step variables before a step is run.
+        self.current_energy_delta = 0
+
     def update_energy(self, delta):
         # Handle 'energy' updates, including 'recycling' cases.
         # Updates 'aspect' if needed.
@@ -177,8 +181,8 @@ class Agent(Thing):
             # Keep within 0 and agent's max_energy.
             prev_energy = self.energy
             self.energy = max(min(self.energy + delta, self.max_energy), 0)
-            self.current_energy_delta = self.energy - prev_energy
-            energy_used = self.current_energy_delta
+            energy_used = self.energy - prev_energy
+            self.current_energy_delta += energy_used
 
             # Check for death condition:
             if self.energy <= 0:
