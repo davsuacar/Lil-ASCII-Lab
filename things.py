@@ -199,14 +199,14 @@ class Agent(Thing):
 
         return self.chosen_action
 
-    def update(self, success):
+    def update_after_action(self, success):
         # Update internal state of agent after trying some action.
 
         # Update internal variables, aspect, etc.
         self.chosen_action_success = success
         # TODO: Update aspect (character(s) displayed, color...)?
 
-        # Update policy (learning).
+        # Update policy (learning). TODO: Consider moving this to a post_step() method.
         self.learn_result = self.learning(
             self.current_state,
             self.chosen_action,
@@ -214,6 +214,10 @@ class Agent(Thing):
 
         # Now the 'step' is totally finished.
         self.steps += 1
+
+    def post_step(self):
+        # Actions on agent after a step is run.
+        pass
 
     def respawn(self):
         # Restablish an agent back to its optimal state.

@@ -276,7 +276,7 @@ class World:
             # Try to execute action.
             success, energy_delta = self.execute_action(agent, action)
             # Update agent's learnings and other internal information.
-            agent.update(success)
+            agent.update_after_action(success)
 
         # Update the world's info after step.
         self.post_step()
@@ -285,9 +285,8 @@ class World:
         # Prepare world's info before actually running core step() functionality.
         
         # Reset agents' step variables.
-        # map(lambda x: x.pre_step, self.agents)
         for agent in self.agents:
-            agent.current_energy_delta = 0
+            agent.pre_step()
 
         # TODO: Generate new energy in the world?
         pass
@@ -296,13 +295,18 @@ class World:
         pass
 
     def post_step(self):
-        # Respawn appropriate dead agents on new random places.
-        for agent in filter(
-                            lambda a: a.energy <= 0 and a.recycling == things.RESPAWNABLE,
-                            self.agents
-                            ):
-            agent.respawn()
-            _ = self.place_at(agent)
+        # Execute actions after a world's step.
+
+        # Call all agents' post_step() here.
+        for agent in self.agents:
+            if agent.energy <= 0 and agent.recycling == things.RESPAWNABLE:
+                # Respawn dead agent on new random places.
+                agent.respawn()
+                _ = self.place_at(agent)
+            else:
+                # Regular post_step()
+                agent.post_step()
+
         # Update rest of world's internal info.
         self.agents.sort(key=lambda x: x.energy, reverse=True)
         self.steps += 1
@@ -341,6 +345,7 @@ class World:
                                agent.position[1] + action_arguments[1]]
             if prey is not None:
                 # Take energy from prey (limited by prey's energy).
+                # max_possible_bite = min(agent.bite_power, agent.max_energy - agent.energy)
                 energy_taken = prey.update_energy(-agent.bite_power)
                 self.energy_map[prey.position[0], prey.position[1]] = prey.energy
                 action_delta += - energy_taken
