@@ -5,6 +5,7 @@
 ###############################################################
 
 import numpy as np
+from numpy import unravel_index
 import random
 
 ###############################################################
@@ -18,8 +19,9 @@ EAT = "EAT"
 # (x, y) deltas for all 8 possible adjacent tiles (excluding (0,0)).
 XY_8_DELTAS = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
 XY_X1_ICONS = ("◣", "◀", "◤", "▼", "▲", "◢", "▶", "◥")
+OFF_BOARD = -1000  # Value signalling an "illegal" out-of-the-board tile.
 
-# Actions definition:
+# Action definitions:
 # An action consists of a verb and some arguments, expressed between brackets here.
 
 ACTIONS_DEF = dict(
@@ -81,17 +83,53 @@ def obtain_possible_bites(world, position, moves_delta_list):
     return possible_bites
 
 
-def obtain_best_bite(world, position, moves_delta_list):
-    '''
-    :param world:
-    :param position:
-    :param moves_delta_list:
-    :return: Return a list with the deltas from 'moves_delta_list' which, if biting to given 'position', would bite some agent in 'world'.
-    '''
+def get_energy_submap(world, position, radius=1):
+    # Return:
+    # energy_submap: a subset of the world's energy_map centered around
+    # 'position' with the given radius.
+    # submap_origin: the coordinates of bottome_left position of energy_submap.
+    # map_origin: a tuple with the origin of 'energy_submap'.
+    # Note: Central 'position' is signalled OFF_BOARD.
 
-    possible_bites = [delta for delta in moves_delta_list
-                      if world.tile_with_agent(position + delta)]
-    return possible_bites
+    x0, y0 = position
+
+    # Obtain 'legal' subrectangle [world_x0, world_x1] x [world_y0, world_y1].
+    submap_x0 = max(0, x0 - radius)
+    submap_x1 = min(x0 + radius, world.width - 1)
+    submap_y0 = max(0, y0 - radius)
+    submap_y1 = min(y0 + radius, world.height - 1)
+    # Get 'submap_origin'
+    submap_origin = (submap_x0, submap_y0)
+
+    # Copy subrectangle on energy_submap.
+    energy_submap = np.copy(world.energy_map[submap_x0:submap_x1+1, submap_y0:submap_y1+1])
+
+    # Mark central position as OFF_BOARD.
+    energy_submap[x0, y0] = OFF_BOARD
+
+    return energy_submap, submap_origin
+
+
+def obtain_best_bite(world, position, moves_delta_list):
+    # Return a tuple with the move taking to the tile with highest energy.
+
+    # Obtain submap around postion ant tuple with its origin.
+    energy_submap, submap_origin = get_energy_submap(world, position)
+
+    # Obtain tuple with relative postion of highest value in submap.
+    biggest = unravel_index(
+        energy_submap.argmax(),
+        energy_submap.shape)
+
+    if energy_submap[x_biggest, y_biggest] > 0:
+        # Generate tuple leading to highest value.
+        best_bite = submap_origin + biggest - position
+    else:
+        # Handle void result.
+        best_bite = None
+
+    return best_bite
+
 
 ###############################################################
 # Minds: Perception
@@ -152,7 +190,7 @@ def passive(state=None):
     return ai.VOID_ACTION
 
 
-def wanderer(state=None):
+def wanderer(state):
     # A hard-coded AI modelling these basic behaviours:
     # - Some inertia for time-consistent movements or eating actions.
     # - Capability to start moves on clear directions, though it can stumble on
@@ -191,7 +229,7 @@ def wanderer(state=None):
     return action
 
 
-def wanderer2(state=None):
+def wanderer2(state):
     # A hard-coded AI modelling these basic behaviours:
     # - Some inertia for time-consistent movements or eating actions.
     # - Capability to start moves on clear directions, though it can stumble on
@@ -205,10 +243,11 @@ def wanderer2(state=None):
     # Default action is to rest.
     action = VOID_ACTION
 
-    """
     # Check for hunger first.
-    if agent.energy / agent.max_energy < hunger_threshold :
-        possible_bites = obtain_possible_bites(world, agent.position, ACTIONS_DEF[EAT][0])
+    """
+    if agent.energy / agent.max_energy < hunger_threshold:
+
+        best_bite = obtain_best_bite(world, agent.position, ACTIONS_DEF[EAT][0])
         if len(possible_bites) > 0
     """
 

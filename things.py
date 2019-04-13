@@ -98,8 +98,8 @@ AGENTS_DEF = (
 ###############################################################
 # CLASSES
 # Thing --- Tile
-#        |- Block
-#        |- Agent
+#        ├- Block
+#        └- Agent
 
 class Thing:
     # Root class containing the common attributes for all classes.
@@ -173,6 +173,7 @@ class Agent(Thing):
         # Handle 'energy' updates, including 'recycling' cases.
         # Updates 'aspect' if needed.
 
+        # ENERGY
         if self.recycling == EVERLASTING:
             # No change to agent's energy despite the delta.
             self.current_energy_delta = 0
@@ -184,7 +185,7 @@ class Agent(Thing):
             energy_used = self.energy - prev_energy
             self.current_energy_delta += energy_used
 
-            # Check for death condition:
+            # ASPECT: Check for death condition:
             if self.energy <= 0:
                 # Update aspect (RESPAWNEABLE condition handled by world).
                 self.color, self.intensity = ui.DEAD_AGENT_COLOR

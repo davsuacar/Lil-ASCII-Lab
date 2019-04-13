@@ -350,6 +350,10 @@ class UI:
             self.tracker.addstr("▉", red_color_pair)
         self.tracker.addstr(" {}% ]".format(energy_percent), fg_bright_color_pair)
 
+        # AUX info: printed for trackinkd purposes if not empty!
+        if self.world.aux_msg != "":
+            self.tracker.addstr(1, 2, self.world.aux_msg, fg_color_pair)
+
         # Tracked agent: energy.
         self.tracker.addstr(2, 2, "{:<14}".format('Energy:'), fg_color_pair)
         if tracked_agent.energy > tracked_agent.max_energy * LOW_ENERGY_THRESHOLD:
@@ -365,12 +369,6 @@ class UI:
 
         # Tracked agent: Other information.
         self.tracker.addstr(3, 2, "{:<14}".format("AI:"), fg_color_pair)
-        """ TODO: Delete this code.
-        if tracked_agent.action is None:
-            text = "None"
-        else:
-            text = tracked_agent.action.__name__
-        """
         self.tracker.addstr("{}".format(tracked_agent.action.__name__), fg_bright_color_pair)
         self.tracker.addstr(4, 2, "{:<14}".format(" "), fg_color_pair)
         self.tracker.addstr("{}".format(tracked_agent.perception.__name__), fg_bright_color_pair)

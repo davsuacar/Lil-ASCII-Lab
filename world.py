@@ -23,6 +23,7 @@ WORLD_DEF = dict(
     n_blocks_rnd=0.4,  # % of +/- randomness in number of blocks [0, 1]
     max_steps=None,  # How long to run the world ('None' for infinite loop).
     fps=5,  # Frames-Per-Second, i.e. number of steps run per second.
+    initial_pause=True,  # Initiates world in 'pause' mode.
     random_seed=None,  # Seed for reproducible runs (None for random).
 )
 
@@ -46,28 +47,28 @@ class World:
     # A tiled, rectangular setting on which a little universe takes life.
     def __init__(self, Simulation_def):
         # Create a world from the definitions given.
-        w_def = Simulation_def[0]
-        t_def = Simulation_def[1]
-        b_def = Simulation_def[2]
-        a_def = Simulation_def[3]
+        world_def = Simulation_def[0]
+        tile_def = Simulation_def[1]
+        block_def = Simulation_def[2]
+        agent_def = Simulation_def[3]
 
         # Assign values from w_def.
-        self.name = w_def["name"]
-        self.width = w_def["width"]
-        self.height = w_def["height"]
-        self.bg_color = w_def["bg_color"]
-        self.bg_intensity = w_def["bg_intensity"]
-        self.n_blocks_rnd = w_def["n_blocks_rnd"]
-        self.max_steps = w_def["max_steps"]
+        self.name = world_def["name"]
+        self.width = world_def["width"]
+        self.height = world_def["height"]
+        self.bg_color = world_def["bg_color"]
+        self.bg_intensity = world_def["bg_intensity"]
+        self.n_blocks_rnd = world_def["n_blocks_rnd"]
+        self.max_steps = world_def["max_steps"]
         # Time and speed settings.
-        self.initialize_fps(w_def["fps"])
+        self.initialize_fps(world_def["fps"])
 
-        self.paused = False  # Whether the user has paused simulation.
-        self.step_by_step = False  # Whether the user has activated step-by-step.
+        self.paused = world_def["initial_pause"]  # Whether the user has paused simulation.
+        self.step_by_step = world_def["initial_pause"]  # Whether the user has activated step-by-step.
         self.creation_time = time.time
 
         # Initialize world: randomness, steps and list of 'things' on it.
-        seed = w_def["random_seed"]
+        seed = world_def["random_seed"]
         if seed is None:
             seed = time.time()
         self.random_seed = seed
@@ -81,18 +82,17 @@ class World:
         self.ground = np.full((self.width, self.height), None)  # Fill in the basis of the world.
         for x in range(self.width):
             for y in range(self.height):
-                # Create tile (position set in t_def[4] is ignored).
-                tile = things.Tile(t_def[0], t_def[1], t_def[2], t_def[3], [x, y])
+                # Create tile (position set in tile_def[4] is ignored).
+                tile = things.Tile(tile_def[0], tile_def[1], tile_def[2], tile_def[3], [x, y])
                 self.ground[x, y] = tile
 
         # Put AGENTS in the world.
         self.agents = []  # List of all types of agent in the world.
         self.tracked_agent = None  # The agent to track during simulation.
-        for a in a_def:  # Loop over the types of agent defined.
-            single_instance = a[0] == 1
-            for i in range(a[0]):  # Create the # of instances specified.
-                # Create agent as defined.
-                if single_instance:
+        for a in agent_def:  # Loop over the types of agent defined.
+            for i in range(a[0]):  # Create the number of instances specified.
+                # Create agent as defined, defining now its suffix.
+                if a[0] == 1:  # Check if it's a single instance.
                     agent_suffix = None
                 else:
                     agent_suffix = i
@@ -102,12 +102,13 @@ class World:
                 if success:
                     # Update agents list and tracked_agent (only the first time).
                     self.agents.append(agent)
+                    # self.energy_map[agent.position[0], agent.position[1]] = agent.energy
                     if self.tracked_agent is None:
                         self.tracked_agent = agent
 
-        # Put in some BLOCKS, quantity based on width,
+        # Put in some BLOCKS, quantity based on width.
         self.blocks = []
-        for b in b_def:  # List of all types of block in the world.
+        for b in block_def:  # List of all types of block in the world.
             if (b[0] is None):  # Unspecified number of blocks.
                 n_random_blocks = (self.width * self.n_blocks_rnd) // 1  # abs. max variation.
                 n_random_blocks = self.width + random.randint(-n_random_blocks, n_random_blocks)
@@ -120,6 +121,10 @@ class World:
                 _ = self.place_at(block)  # Put in random position if possible (fail condition ignored).
                 self.blocks.append(block)
                 n += 1
+
+        # Final settings.
+        self.total_energy = self.energy_map.sum()  # Total from all agents.
+        self.aux_msg = ""
 
     def initialize_fps(self, fps):
         # fps, spf is the current world speed (frames-per-second, seconds-per-frame).
@@ -175,6 +180,9 @@ class World:
         return (self.steps * referential_spf) // 1
 
     def place_at(self, thing, position=things.RANDOM_POSITION, relocate=False):
+        # Put "things" in the world, updating the thing and
+        # the world's internal status (self.things and self.energy_map).
+        #
         # If position is not defined, find a random free place and move the Thing there.
         # If position is defined,
         #       if not occupied, move a Thing to position;
@@ -200,11 +208,22 @@ class World:
             if thing.position[0] is not None and thing.position[1] is not None:  # TODO: use .position wo [..]
                 # The Thing was already in the world; clear out old place.
                 self.things[thing.position[0], thing.position[1]] = None
+                self.energy_map[thing.position[0], thing.position[1]] = 0
 
             self.things[position[0], position[1]] = thing
+            if type(thing) is things.Agent:
+                self.energy_map[position[0], position[1]] = thing.energy
             thing.position = position
 
         return success
+
+    def update_agent_energy(self, agent, energy_delta):
+        # Execute agent's method for energy update and
+        # the world's internal status (self.energy_map).
+        energy_taken = agent.update_energy(energy_delta)
+        self.energy_map[agent.position[0], agent.position[1]] = agent.energy
+
+        return energy_taken
 
     def tile_is_empty(self, position):
         # Check if a given position exists within world's limits and is free.
@@ -258,11 +277,6 @@ class World:
 
         return tiles
 
-    def find_free_adjacent_tile(self, position):
-        # TODO
-        x0, y0 = position
-        return False, position
-
     def step(self):
         # Prepare world's info for step.
         self.pre_step()
@@ -283,7 +297,7 @@ class World:
 
     def pre_step(self):
         # Prepare world's info before actually running core step() functionality.
-        
+
         # Reset agents' step variables.
         for agent in self.agents:
             agent.pre_step()
@@ -295,7 +309,10 @@ class World:
         pass
 
     def post_step(self):
-        # Execute actions after a world's step.
+        # Execute actions after a world's step (and before 'respawns').
+        self.total_energy = self.energy_map.sum()
+        assert np.isclose(self.total_energy, sum(a.energy for a in self.agents)), \
+            "Total energy mismatch ({}) between world.energy_map and agents.".format(self.total_energy - sum(a.energy for a in self.agents))
 
         # Call all agents' post_step() here.
         for agent in self.agents:
@@ -316,6 +333,8 @@ class World:
         action_type, action_arguments, action_energy_ratio = action
         # Calculate energy cost IF action is actually made.
         action_delta = agent.move_cost * action_energy_ratio
+        # Manage abandoned_position, for cases when the agent moves.
+        abandoned_position = None
 
         if action_delta > agent.energy:
             # Not enough energy for the move.
@@ -343,11 +362,11 @@ class World:
             # Eating action.
             prey = self.things[agent.position[0] + action_arguments[0],
                                agent.position[1] + action_arguments[1]]
-            if prey is not None:
+            if prey is not None:  # TODO: Limit to 'Agent' class (avoiding biting a 'Block')
                 # Take energy from prey (limited by prey's energy).
                 # max_possible_bite = min(agent.bite_power, agent.max_energy - agent.energy)
-                energy_taken = prey.update_energy(-agent.bite_power)
-                self.energy_map[prey.position[0], prey.position[1]] = prey.energy
+                energy_taken = self.update_agent_energy(prey, -agent.bite_power)
+                # self.energy_map[prey.position[0], prey.position[1]] = prey.energy
                 action_delta += - energy_taken
                 success = action_delta > 0
             else:
@@ -359,8 +378,8 @@ class World:
             raise Exception('Invalid action type passed: {}.'.format(action_type))
 
         # Update energy for agent and world.
-        _ = agent.update_energy(energy_delta)  # Dropped energy is lost.
-        self.energy_map[agent.position[0], agent.position[1]] = agent.energy
+        _ = self.update_agent_energy(agent, energy_delta)  # Dropped energy is lost.
+        # self.energy_map[agent.position[0], agent.position[1]] = agent.energy
 
         return success, energy_delta
 
@@ -411,6 +430,9 @@ class World:
                 if (next_agent.action is not None and next_agent.energy > 0) or idx == initial_idx:
                     end_search = True
             self.tracked_agent = next_agent
+        else:
+            self.paused = False
+            self.step_by_step = False
 
 
 ###############################################################

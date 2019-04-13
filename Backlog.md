@@ -44,7 +44,9 @@ Future:
 
 Future:
 
+* ui.draw(): allow UI action (select a new agent) on paused world by decoupling draw/step loops (draw would loop drawing the same frame till user moves on)!
 * Tracker (aesthetics): Review tracker's layout (split sub-areas?).
+* Improve highlight for tracked agent? a) between brackets; b) box-characters.
 * Add color to logo at program exit.
 * Implement basic agent animation in "aspect" (2 or 3 looping chars).
 * Tracking: Maintain agents' heatmaps (where they've been around).
@@ -55,11 +57,22 @@ Future:
 
 1.0:
 
+* Handle/generalize bite effect when taken energy would exceed agent's max_energy:
+    a) agent absorbs limited amount, but prey gets full 'bite_power' reduction.
+    b) agent absorbs limited amount, and prey only loses such amount.
 * Improve respawn (e.g. generalize agent's __init__ to clone a given agent?).
 * execute_action(): check for impossible "EAT" actions (e.g. on a Block).
 
 Future:
 
+* Review / generalize diffeferent game dynamics:
+  * Full information / partially observable
+  * Predictability / unpredictability (hidden info, inherent randomness)
+  * Turn-based / pseudo-simultaneous / truly simultaneous
+* Review / generalize pre-step sorting dynamics:
+    a) Sort by enery level (benefits stronger agents; may generate undesired strategies if agents learn this advantage/disadvantage)
+    b) Randomize: (probably the most fair and safe approach)
+    c) Other?
 * Improve world generation with patterns of blocks.
 * Allow several 'respawn' options:
   * Full start: all memories and learnings wiped out.

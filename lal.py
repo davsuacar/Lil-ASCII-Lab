@@ -43,14 +43,15 @@ def main_loop(stdscr, world):
 
 if __name__ == '__main__':
     # Main program.
-    print("Lil' ASCII Lab v0.1")
-    print("{:<20}{}".format("- Started:", time.ctime()))
+    time_0 = time.ctime()  # Start time.
 
     # Create the world and start "wrapped" environment.
     world = w.World(w.Simulation_def)
     wrapper(main_loop, world)
 
     # Quit program.
+    print("Lil' ASCII Lab v0.1")
+    print("{:<20}{}".format("- Started:", time_0))
     print("{:<20}{}".format("- Ended:", time.ctime()))
     print("{:<20}{:,}".format("- Steps run:", world.steps))
     print("{:<20}{}".format("- Random seed used:", world.random_seed))
