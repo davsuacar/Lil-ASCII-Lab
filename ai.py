@@ -7,6 +7,7 @@
 import numpy as np
 from numpy import unravel_index
 import random
+from collections import namedtuple
 
 ###############################################################
 # CONSTANTS
@@ -18,34 +19,37 @@ EAT = "EAT"
 
 # (x, y) deltas for all 8 possible adjacent tiles (excluding (0,0)).
 XY_8_DELTAS = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
-XY_X1_ICONS = ("◣", "◀", "◤", "▼", "▲", "◢", "▶", "◥")
+XY_8_ICONS = ("◣", "◀", "◤", "▼", "▲", "◢", "▶", "◥")
 OFF_BOARD = -1000  # Value signalling an "illegal" out-of-the-board tile.
 
 # Action definitions:
-# An action consists of a verb and some arguments, expressed between brackets here.
+# An action consists of a verb and some arguments, expressed between brackets.
+
+Action = namedtuple("Action", "arguments radius energy_ratio")
 
 ACTIONS_DEF = dict(
-    NONE=(  # PASSIVE action.
-        [],  # Arguments: Not required.
-        0.0  # Energy ratio: 0x -> No energy consumption.
+    # PASSIVE action.
+    NONE=Action(
+        [],  # arguments: Not required.
+        0,  # radius: local.
+        0.0  # energy_ratio: 0x -> No energy consumption.
+    ),
+    # MOVING to adjacent relative coordinates.
+    MOVE=Action(
+        np.array(XY_8_DELTAS),  # arguments: ([x, y] delta) for a given [x0, y0].
+        1,  # radius: 1 tile.
+        1.0  # energy_ratio: 1x -> Unmodified ratio for 1-tile moves.
     ),
 
-    MOVE=(  # MOVING to adjacent relative coordinates.
-        np.array(  # 2 arguments ([x, y] delta) for a given [x0, y0]
-            XY_8_DELTAS
-          ),
-        1.0  # Energy ratio: 1x -> Unmodified ratio for 1-tile moves.
-    ),
-
-    EAT=(  # EATING energy from adjacent relative coordinates.
-        np.array(  # 2 arguments ([x, y] delta) for a given [x0, y0]
-            XY_8_DELTAS
-        ),
-        0.0  # Energy ratio: 0x -> No energy consumption.
+    # EATING energy from adjacent relative coordinates.
+    EAT=Action(
+        np.array(XY_8_DELTAS),  # arguments: ([x, y] delta) for a given [x0, y0].
+        1,  # radius: 1 tile.
+        0.0  # energy_ratio: 0x -> No energy consumption.
     ),
 )
 
-VOID_ACTION = [NONE, ACTIONS_DEF[NONE][0], ACTIONS_DEF[NONE][1]]
+VOID_ACTION = [NONE, ACTIONS_DEF[NONE].arguments, ACTIONS_DEF[NONE].energy_ratio]
 
 NO_PERCEPTION = None
 NO_ACTION = None
@@ -99,36 +103,43 @@ def get_energy_submap(world, position, radius=1):
     submap_y0 = max(0, y0 - radius)
     submap_y1 = min(y0 + radius, world.height - 1)
     # Get 'submap_origin'
-    submap_origin = (submap_x0, submap_y0)
+    submap_origin = [submap_x0, submap_y0]
 
     # Copy subrectangle on energy_submap.
     energy_submap = np.copy(world.energy_map[submap_x0:submap_x1+1, submap_y0:submap_y1+1])
 
     # Mark central position as OFF_BOARD.
-    energy_submap[x0, y0] = OFF_BOARD
+    x0_submap = x0 - submap_x0
+    y0_submap = y0 - submap_y0
+    energy_submap[x0_submap, y0_submap] = OFF_BOARD
 
     return energy_submap, submap_origin
 
 
-def obtain_best_bite(world, position, moves_delta_list):
-    # Return a tuple with the move taking to the tile with highest energy.
+def obtain_best_bite(world, position, radius=1):
+    # Return a tuple with the move taking to the tile with highest energy
+    # within some given 'radius' around 'position'.
 
     # Obtain submap around postion ant tuple with its origin.
-    energy_submap, submap_origin = get_energy_submap(world, position)
+    energy_submap, submap_origin = get_energy_submap(world, position, radius)
 
     # Obtain tuple with relative postion of highest value in submap.
     biggest = unravel_index(
         energy_submap.argmax(),
         energy_submap.shape)
 
-    if energy_submap[x_biggest, y_biggest] > 0:
+    if energy_submap[biggest[0], biggest[1]] > 0:
         # Generate tuple leading to highest value.
-        best_bite = submap_origin + biggest - position
+        best_bite_delta = (
+            submap_origin[0] + biggest[0] - position[0],
+            submap_origin[1] + biggest[1] - position[1]
+        )
+
     else:
         # Handle void result.
-        best_bite = None
+        best_bite_delta = None
 
-    return best_bite
+    return best_bite_delta
 
 
 ###############################################################
@@ -212,29 +223,27 @@ def wanderer(state):
             action = VOID_ACTION
         else:
             # EAT: Check for close agents.
-            possible_bites = obtain_possible_bites(world, agent.position, ACTIONS_DEF[EAT][0])
+            possible_bites = obtain_possible_bites(world, agent.position, ACTIONS_DEF[EAT].arguments)
             if random.uniform(0, 1) <= biting_prob and len(possible_bites) > 0:
                 # Choose a random bite.
                 xy_delta = possible_bites[random.randint(0, len(possible_bites) - 1)]
-                action = [EAT, xy_delta, ACTIONS_DEF[EAT][1]]
+                action = [EAT, xy_delta, ACTIONS_DEF[EAT].energy_ratio]
             else:
                 # MOVE: Choose a random legal move.
-                possible_moves = obtain_possible_moves(world, agent.position, ACTIONS_DEF[MOVE][0])
+                possible_moves = obtain_possible_moves(world, agent.position, ACTIONS_DEF[MOVE].arguments)
                 if len(possible_moves) == 0:
                     action = VOID_ACTION
                 else:
                     xy_delta = possible_moves[random.randint(0, len(possible_moves) - 1)]
-                    action = [MOVE, xy_delta, ACTIONS_DEF[MOVE][1]]
+                    action = [MOVE, xy_delta, ACTIONS_DEF[MOVE].energy_ratio]
 
     return action
 
 
 def wanderer2(state):
     # A hard-coded AI modelling these basic behaviours:
-    # - Some inertia for time-consistent movements or eating actions.
-    # - Capability to start moves on clear directions, though it can stumble on
-    #   other objects later (out of inertia).
-    # - Capability to eat from adjacent objects at times.
+    # - If hungry, try  best bite (highest energy) around.
+    # - Otherwise, act as a regular 'wanderer'.
 
     agent, world = state  # Extract both complete objects.
 
@@ -244,12 +253,14 @@ def wanderer2(state):
     action = VOID_ACTION
 
     # Check for hunger first.
-    """
     if agent.energy / agent.max_energy < hunger_threshold:
+        # Hungry: try best bite.
+        best_bite_delta = obtain_best_bite(world, agent.position, ACTIONS_DEF[EAT].radius)
+        if best_bite_delta is not None:
+            action = [EAT, best_bite_delta, ACTIONS_DEF[EAT].energy_ratio]
 
-        best_bite = obtain_best_bite(world, agent.position, ACTIONS_DEF[EAT][0])
-        if len(possible_bites) > 0
-    """
+    if action == VOID_ACTION:
+        action = wanderer(state)
 
     return action
 

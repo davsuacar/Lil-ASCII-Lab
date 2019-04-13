@@ -5,10 +5,6 @@
 1.0:
 
 * Refine AI for 'wanderer':
-  * Not to miss adjacent food when energy starts to be low.
-  * Choose highest-energy adjacent target for food.
-
-* Refine AI for 'wanderer':
   * Escape from attacks:
     * Prioritize moving over feeding/no-action.
     * Choose best direction?
@@ -112,6 +108,9 @@ Future:
 AI:
 
 * Implement a basic random AI (e.g. random moves / still, with RND inertia).
+* Refine AI for 'wanderer':
+  * Not to miss adjacent food when energy starts to be low.
+  * Choose highest-energy adjacent target for food.
 * Implement "EAT" action.
 * Implement full basic AI logic:
   * Input = Status + Reward, from the World. [DONE] 

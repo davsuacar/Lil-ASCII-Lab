@@ -16,8 +16,8 @@ import ui
 
 WORLD_DEF = dict(
     name="Random Blox",
-    width=20,  # x from 0 to width - 1
-    height=15,  # y from 0 to height - 1
+    width=10,  # x from 0 to width - 1
+    height=10,  # y from 0 to height - 1
     bg_color=ui.BLACK,  # background color (see ui.py module).
     bg_intensity=ui.NORMAL,  # background intensity (NORMAL or BRIGHT).
     n_blocks_rnd=0.4,  # % of +/- randomness in number of blocks [0, 1]

@@ -33,7 +33,7 @@ TILE_DEF = (
 BLOCKS_DEF = (
     #   (None, "full-block", " ", ui.BLACK, ui.BRIGHT, RANDOM_POSITION),
     #   (10, "fence", "#", ui.WHITE, ui.BRIGHT, RANDOM_POSITION),
-    (60, "block", "▢", ui.BLUE, ui.BRIGHT, RANDOM_POSITION),
+    (20, "block", "▢", ui.BLUE, ui.BRIGHT, RANDOM_POSITION),
 )
 
 # Agent definition:
@@ -68,19 +68,19 @@ BLOCKS_DEF = (
 
 AGENTS_DEF = (
     # Real minds:
+    (1, "Omi", "Ω", ui.CYAN, ui.BRIGHT, RANDOM_POSITION,
+     (100, 110, 5, -0.1, -0.5), RESPAWNABLE,
+     (ai.full_info, ai.wanderer2, ai.no_learning)),
+
     (10, "bug", "⚉", ui.GREEN, ui.BRIGHT, RANDOM_POSITION,
      (100, 110, 5, -0.1, -0.1), NON_RECHARGEABLE,
      (ai.full_info, ai.wanderer, ai.no_learning)),
 
-    (4, "Omi", "Ω", ui.CYAN, ui.BRIGHT, RANDOM_POSITION,
-     (100, 110, 5, -0.1, -0.5), RESPAWNABLE,
-     (ai.full_info, ai.wanderer, ai.no_learning)),
-
-    (3, "killer", "Ѫ", ui.RED, ui.BRIGHT, RANDOM_POSITION,
+    (0, "killer", "Ѫ", ui.RED, ui.BRIGHT, RANDOM_POSITION,
      (100, 110, 100, -0.1, -1), NON_RECHARGEABLE,
      (ai.full_info, ai.wanderer, ai.no_learning)),
 
-    (4, "foe", "Д", ui.MAGENTA, ui.BRIGHT, RANDOM_POSITION,
+    (0, "foe", "Д", ui.MAGENTA, ui.BRIGHT, RANDOM_POSITION,
      (100, 110, 10, -0.1, -1), RESPAWNABLE,
      (ai.full_info, ai.wanderer, ai.no_learning)),
 
