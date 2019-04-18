@@ -1,24 +1,95 @@
-###############################################################
-# Agents
-# for "Lil' ASCII Lab" and its entities...
-
-###############################################################
+###############################################################################
+# Classess of Thing in an LAL 'World':
+# Thing --- Tile
+#        ├- Block
+#        └- Agent
+###############################################################################
 
 import ai
 import ui
 
+###############################################################################
+# THING:
+# Settings defining any 'Thing' (Tile, Block or Agent) in the 'World':
+
+Thing_settings_def = namedtuple("Thing_settings_def", [
+    'name',  # Some descriptive text (e.g. "bug").
+    'aspect',  # One single Unicode character (e.g. "⚉").
+    'color',  # Its normal color (e.g. ui.CYAN). (See ui.py module).
+    'intensity',  # Its normal intensity (e.g. ui.BRIGHT). (See ui.py module).
+    'initial_position',  # Its initial position (or RND). If 'n_instances' > 1, it will be used for the first one only.
+])
+
 # Constants
 RANDOM_POSITION = (None, None)
 
-NON_RECHARGEABLE = None
-RECHARGEABLE = 'Rechargeable'  # TODO: Implement agent 2 agent energy donation.
-EVERLASTING = 'Everlasting'
-RESPAWNABLE = 'Respawnable'
+###############################################################################
+# TILE:
+# Settings defining a 'Tile':
+
+pass  # Currently Tiles are defined through common "Thing_settings_def".
+
+###############################################################################
+# BLOCK:
+# Settings defining a 'Block':
+
+Block_def = namedtuple("Block_def", [
+    'n_instances',  # Number of Blocks to place (e.g. 20).
+    'thing_settings',  # Generic settings common to all Things (Tile, Block, Agent).
+])
+
+###############################################################################
+# AGENT:
+# Settings defining an 'Agent':
+
+Agent_def = namedtuple("Agent_def", [
+    'n_instances',  # Number of instances to place (e.g. 10).
+    'thing_settings',  # Generic settings common to all Things (Tile, Block, Agent).
+    'energy_settings',  # Energy-related settings (see 'Energy_settings_def').
+    'ai_settings'  # Functions used for perception, action and learning.
+    ])
+
+Energy_settings_def = namedtuple("Energy_settings_def", [
+    'initial_energy',  # Initial energy assigned at start.
+    'maximum_energy',  # Maximum energy the agent can acquire.
+    'bite_power',  # Amount of energy the agent can take with one bite.
+    'step_cost',  # Energy consumed on each world step regardless of action chosen.
+    'move_cost'  # Energy consumed for moving to an adjacent tile.
+    'recycling_type'  # Dynamics ruling its energy losses and 'death'.
+])
+
+# Constants:
+# Agents' recycling_settings: types of dynamics.
+NON_RECHARGEABLE = None  # Regular loss; useless after 'death'.
+RECHARGEABLE = 'Rechargeable'  # Regular loss; can be recharged after 'death'.
+EVERLASTING = 'Everlasting'  # NO loss regardless of energy taken.
+RESPAWNABLE = 'Respawnable'  # Regular loss; resurrected after death at random location.
+
+#   Mind/perception:
+#       The function translating the environment into input for an agent's mind.
+#       It's not limited to the external world, and can include internal information (e.g. energy level).
+#       If None, ai.default_senses() is assigned.
+#   Mind/action:
+#       The function processing perception to output actions.
+#       If None, a NO_ACTION will always be assumed.
+#   Mind/learning:
+#       The function updating the acting policy after an action is executed.
+#       In None, the learning step is simply skipped.
+AI_settings_def = namedtuple("AI_settings_def", [
+    'perception',  # World -> AI input.
+    'action',  # AI input -> Action.
+    'learning'  # Action, Reward -> New AI.
+])
+
+###############################################################################
+# World's casting
+# All things to populate this instance of 'World'.
+###############################################################################
 
 # Tiles definition:
-# Type of tile, aspect, color, intensity, position (not specified here).
+# name, aspect, color, intensity, initial_position.
 TILE_DEF = (
-    ("ground", "·", ui.BLUE, ui.NORMAL, RANDOM_POSITION)
+    Thing_settings_def("ground", "·", ui.BLUE, ui.NORMAL, RANDOM_POSITION)
 )
 
 # Block definition:
@@ -33,95 +104,83 @@ TILE_DEF = (
 BLOCKS_DEF = (
     #   (None, "full-block", " ", ui.BLACK, ui.BRIGHT, RANDOM_POSITION),
     #   (10, "fence", "#", ui.WHITE, ui.BRIGHT, RANDOM_POSITION),
-    (20, "block", "▢", ui.BLUE, ui.BRIGHT, RANDOM_POSITION),
+    Block_def(
+        20,
+        Thing_settings_def("block", "▢", ui.BLUE, ui.BRIGHT, RANDOM_POSITION)
+    )
 )
-
-# Agent definition:
-#   Number of instances to place (e.g. 10).
-#   Name, some descriptive text (e.g. "bug").
-#   Aspect: one single Unicode character (e.g. "⚉").
-#   Color & intensity:  (see ui.py module).
-#   Initial position (or RND). If more than one instance, it will be ignored.
-#
-#   Energy-related settings:
-#       Initial energy assigned at start.
-#       Maximum energy the agent can acquire.
-#       Bite power, amount of energy the agent can take with one bite.
-#       Step_cost, i.e. energy consumed on each world step regardless of action chosen.
-#       Move_cost, i.e. energy consumed for moving to an adjacent tile.
-#
-#   Recycling settings:
-#       'None':         regular loss; useless after death.
-#       'Rechargeable': regular loss; can be recharged after 'death'.
-#       'Everlasting':  NO loss regardless of energy taken.
-#           
-#   Mind/perception:
-#       The function translating the environment into input for an agent's mind.
-#       It's not limited to the external world, and can include internal information (e.g. energy level).
-#       If None, ai.default_senses() is assigned.
-#   Mind/action:
-#       The function processing perception to output actions.
-#       If None, a NO_ACTION will always be assumed.
-#   Mind/learning:
-#       The function updating the acting policy after an action is executed.
-#       In None, the learning step is simply skipped.
 
 AGENTS_DEF = (
-    # Real minds:
-    (1, "Omi", "Ω", ui.CYAN, ui.BRIGHT, RANDOM_POSITION,
-     (100, 110, 5, -0.1, -0.5), RESPAWNABLE,
-     (ai.full_info, ai.wanderer2, ai.no_learning)),
-
-    (10, "bug", "⚉", ui.GREEN, ui.BRIGHT, RANDOM_POSITION,
-     (100, 110, 5, -0.1, -0.1), NON_RECHARGEABLE,
-     (ai.full_info, ai.wanderer, ai.no_learning)),
-
-    (0, "killer", "Ѫ", ui.RED, ui.BRIGHT, RANDOM_POSITION,
-     (100, 110, 100, -0.1, -1), NON_RECHARGEABLE,
-     (ai.full_info, ai.wanderer, ai.no_learning)),
-
-    (0, "foe", "Д", ui.MAGENTA, ui.BRIGHT, RANDOM_POSITION,
-     (100, 110, 10, -0.1, -1), RESPAWNABLE,
-     (ai.full_info, ai.wanderer, ai.no_learning)),
-
-    # Mindless:
-    (5, "energy", "♥", ui.RED, ui.NORMAL, RANDOM_POSITION,
-     (50, 50, 0, -0.001, 0), RESPAWNABLE,
-     (None, None, None)),
-
-    (1, "recharger", "*", ui.YELLOW, ui.BRIGHT, RANDOM_POSITION,
-     (30, 30, 0, 0, 0), EVERLASTING,
-     (None, None, None)),
+    # With real minds:
+    Agent_def(
+        1,
+        Thing_settings_def("Omi", "Ω", ui.CYAN, ui.BRIGHT, RANDOM_POSITION),
+        Energy_settings_def(100, 110, 5, -0.1, -0.5, RESPAWNABLE),
+        AI_settings_def(ai.full_info, ai.wanderer2, ai.no_learning)
+    ),
+    Agent_def(
+        10,
+        Thing_settings_def("bug", "⚉", ui.GREEN, ui.BRIGHT, RANDOM_POSITION),
+        Energy_settings_def(100, 110, 5, -0.1, -0.1, NON_RECHARGEABLE),
+        AI_settings_def(ai.full_info, ai.wanderer, ai.no_learning)
+    ),
+    Agent_def(
+        0,
+        Thing_settings_def("killer", "Ѫ", ui.RED, ui.BRIGHT, RANDOM_POSITION),
+        Energy_settings_def(100, 110, 5, -0.1, -0.1, NON_RECHARGEABLE),
+        AI_settings_def(ai.full_info, ai.wanderer, ai.no_learning)
+    ),
+    Agent_def(
+        0,
+        Thing_settings_def(0, "foe", "Д", ui.MAGENTA, ui.BRIGHT, RANDOM_POSITION),
+        Energy_settings_def(100, 110, 10, -0.1, -1, RESPAWNABLE),
+        AI_settings_def(ai.full_info, ai.wanderer, ai.no_learning)
+    ),
+    
+    # Mindeless:
+    Agent_def(
+        5,
+        Thing_settings_def("energy", "♥", ui.RED, ui.NORMAL, RANDOM_POSITION),
+        Energy_settings_def(50, 50, 0, -0.001, 0, RESPAWNABLE),
+        AI_settings_def(None, None, None)
+    ),
+    Agent_def(
+        1,
+        Thing_settings_def("recharger", "*", ui.YELLOW, ui.BRIGHT, RANDOM_POSITION),
+        Energy_settings_def(30, 30, 0, 0, 0, EVERLASTING),
+        AI_settings_def(None, None, None)
+    )
 )
 
-
-###############################################################
-# CLASSES
+###############################################################################
+# Classess of Thing in an LAL 'World':
 # Thing --- Tile
 #        ├- Block
 #        └- Agent
+###############################################################################
+
 
 class Thing:
     # Root class containing the common attributes for all classes.
-    def __init__(self, name, aspect, color, intensity, position):
-        self.name = name  # Name of the thing.
-        self.aspect = aspect  # Text character to display.
-        self.color = color  # Color for the character.
-        self.intensity = intensity  # Intensity to apply.
-        self.position = position  # Its position in the world.
+    def __init__(self, thing_def):
+        self.name = thing_def.name  # Name of the thing.
+        self.aspect = thing_def.aspect  # Text character to display.
+        self.color = thing_def.color  # Color for the character.
+        self.intensity = thing_def.intensity  # Intensity to apply.
+        self.position = thing_def.initial_position  # Its position in the world.
 
 
 class Tile(Thing):
-    pass
+    pass  # Use root class'.
 
 
 class Block(Thing):
     num_blocks = 0
 
     # It passively occupies one tile, never moving.
-    def __init__(self, name, aspect, color, intensity, position):
+    def __init__(self, thing_def):
         # Initialize inherited attributes.
-        super().__init__(name, aspect, color, intensity, position)
+        super().__init__(thing_def)
         # Update class variable.
         Block.num_blocks += 1
 
