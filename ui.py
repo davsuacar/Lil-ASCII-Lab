@@ -307,8 +307,15 @@ class UI:
                     else:
                         # An AGENT:
                         if thing.current_energy_delta > 0:
-                            pair = self.pair(thing.color + thing.intensity, thing.color + NORMAL)
+                            # Highlight energy increase.
+                            pair = self.pair(thing.color + BRIGHT,
+                                             thing.color + NORMAL)
+                        elif thing.current_energy_delta < thing.acceptable_energy_drop:
+                            # Highlight huge energy drop.
+                            pair = self.pair(RED + BRIGHT,
+                                             RED + NORMAL)
                         else:
+                            # Otherwise, use agent's and world's regular color/intensity.
                             pair = self.pair(thing.color + thing.intensity,
                                              self.world.bg_color + self.world.bg_intensity)
                         if 0 < thing.energy < thing.max_energy * LOW_ENERGY_THRESHOLD:
@@ -354,7 +361,7 @@ class UI:
         if self.world.aux_msg != "":
             self.tracker.addstr(1, 2, self.world.aux_msg, fg_color_pair)
 
-        # Tracked agent: energy.
+        # Tracked agent: Energy.
         self.tracker.addstr(2, 2, "{:<14}".format('Energy:'), fg_color_pair)
         if tracked_agent.energy > tracked_agent.max_energy * LOW_ENERGY_THRESHOLD:
             pair = fg_bright_color_pair
@@ -367,7 +374,7 @@ class UI:
         elif tracked_agent.current_energy_delta > 0:
             self.tracker.addstr("+{:.1f}".format(tracked_agent.current_energy_delta), fg_bright_color_pair)
 
-        # Tracked agent: Other information.
+        # Tracked agent: AI.
         self.tracker.addstr(3, 2, "{:<14}".format("AI:"), fg_color_pair)
         self.tracker.addstr("{}".format(tracked_agent.action.__name__), fg_bright_color_pair)
         self.tracker.addstr(4, 2, "{:<14}".format(" "), fg_color_pair)
@@ -375,13 +382,20 @@ class UI:
         self.tracker.addstr(5, 2, "{:<14}".format(" "), fg_color_pair)
         self.tracker.addstr("{}".format(tracked_agent.learning.__name__), fg_bright_color_pair)
 
+        # Tracked agent: Action.
         if tracked_agent.chosen_action_success:
             pair = fg_bright_color_pair
         else:
             pair = bright_red_color_pair
         self.tracker.addstr(7, 2, "{:<14}".format('Action:'), fg_color_pair)
-        self.tracker.addstr("{} {}".format(tracked_agent.chosen_action[0], tracked_agent.chosen_action[1]), pair)
+        self.tracker.addstr("{} {} {}".format(
+            tracked_agent.chosen_action[0],
+            tracked_agent.action_icon,
+            tracked_agent.chosen_action[1]
+            ),
+            pair)
 
+        # Tracked agent: Other information.
         self.tracker.addstr(8, 2, "{:<14}".format('Carrying:'), fg_color_pair)
         self.tracker.addstr("{}".format('[]'), fg_bright_color_pair)
         self.tracker.addstr(9, 2, "{:<14}".format('Message:'), fg_color_pair)

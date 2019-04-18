@@ -16,15 +16,15 @@
 Future:
 
 * Refine wanderer / hunter:
-  * Target highest-energy accessible (i.e. visible) targets.
+  * Move towards highest-energy accessible (i.e. visible) targets.
 
-* Implement dynamics of inventory (grab, drop, max. weight...).
+* Implement dynamics of inventory (grab, drop, max.weight...).
 
 ## AI - Perception
 
 1.0:
 
-* Visual limitation (full world, subsection around agent)
+* Visual limitation (full world, subsection around agent).
 
 Future:
 
@@ -40,7 +40,9 @@ Future:
 
 Future:
 
+* Footer: Allow 2 lines when board is too narrow for text to fit.
 * ui.draw(): allow UI action (select a new agent) on paused world by decoupling draw/step loops (draw would loop drawing the same frame till user moves on)!
+* Board: make "dead" respawnable agents BLINK.
 * Tracker (aesthetics): Review tracker's layout (split sub-areas?).
 * Improve highlight for tracked agent? a) between brackets; b) box-characters.
 * Add color to logo at program exit.

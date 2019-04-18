@@ -13,27 +13,27 @@ import ai
 import ui
 
 # World definition:
-
+# This is what the world simulated will look like:
 WORLD_DEF = dict(
-    name="Random Blox",
-    width=10,  # x from 0 to width - 1
-    height=10,  # y from 0 to height - 1
+    name="Random Blox",  # Descriptive string.
+    width=10,  # Defining coordinate x from 0 to width - 1
+    height=10,  # Defining coordinate y from 0 to height - 1
     bg_color=ui.BLACK,  # background color (see ui.py module).
-    bg_intensity=ui.NORMAL,  # background intensity (NORMAL or BRIGHT).
+    bg_intensity=ui.NORMAL,  # background intensity (see ui.py module).
     n_blocks_rnd=0.4,  # % of +/- randomness in number of blocks [0, 1]
     max_steps=None,  # How long to run the world ('None' for infinite loop).
-    fps=5,  # Frames-Per-Second, i.e. number of steps run per second.
+    fps=5,  # Frames-Per-Second, i.e. number of time steps run per second.
     initial_pause=True,  # Initiates world in 'pause' mode.
     random_seed=None,  # Seed for reproducible runs (None for random).
 )
 
 # Simulation definition:
 # These are the settings provided to the simulation:
-Simulation_def = (
-    WORLD_DEF,  # Some specific world definition.
-    things.TILE_DEF,  # The tiles it will contain.
-    things.BLOCKS_DEF,  # The blocks to put in it.
-    things.AGENTS_DEF,  # The agents who will live in it.
+Simulation_def = dict(
+    world=WORLD_DEF,  # Some specific world definition.
+    tile=things.TILE_DEF,  # The tiles it will contain.
+    blocks=things.BLOCKS_DEF,  # The blocks to put in it.
+    agents=things.AGENTS_DEF,  # The agents who will live in it.
 )
 
 # Constants:
@@ -47,10 +47,10 @@ class World:
     # A tiled, rectangular setting on which a little universe takes life.
     def __init__(self, Simulation_def):
         # Create a world from the definitions given.
-        world_def = Simulation_def[0]
-        tile_def = Simulation_def[1]
-        block_def = Simulation_def[2]
-        agent_def = Simulation_def[3]
+        world_def = Simulation_def["world"]
+        tile_def = Simulation_def["tile"]
+        blocks_def = Simulation_def["blocks"]
+        agents_def = Simulation_def["agents"]
 
         # Assign values from w_def.
         self.name = world_def["name"]
@@ -60,9 +60,9 @@ class World:
         self.bg_intensity = world_def["bg_intensity"]
         self.n_blocks_rnd = world_def["n_blocks_rnd"]
         self.max_steps = world_def["max_steps"]
+
         # Time and speed settings.
         self.initialize_fps(world_def["fps"])
-
         self.paused = world_def["initial_pause"]  # Whether the user has paused simulation.
         self.step_by_step = world_def["initial_pause"]  # Whether the user has activated step-by-step.
         self.creation_time = time.time
@@ -82,42 +82,48 @@ class World:
         self.ground = np.full((self.width, self.height), None)  # Fill in the basis of the world.
         for x in range(self.width):
             for y in range(self.height):
-                # Create tile (position set in tile_def[4] is ignored).
-                tile = things.Tile(tile_def[0], tile_def[1], tile_def[2], tile_def[3], [x, y])
+                # Create tile.
+                tile = things.Tile(tile_def)
                 self.ground[x, y] = tile
 
         # Put AGENTS in the world.
         self.agents = []  # List of all types of agent in the world.
         self.tracked_agent = None  # The agent to track during simulation.
-        for a in agent_def:  # Loop over the types of agent defined.
-            for i in range(a[0]):  # Create the number of instances specified.
+        for a_def in agents_def:  # Loop over the types of agent defined.
+            for i in range(a_def.n_instances):  # Create the number of instances specified.
                 # Create agent as defined, defining now its suffix.
-                if a[0] == 1:  # Check if it's a single instance.
+                if a_def.n_instances == 1:  # Check if it's a single instance.
                     agent_suffix = None
                 else:
                     agent_suffix = i
-                agent = things.Agent(a[1:], agent_suffix)
+                agent = things.Agent(
+                    a_def.thing_settings,
+                    a_def.energy_settings,
+                    a_def.ai_settings,
+                    agent_suffix
+                    )
                 # Put agent in the world on requested position, relocating on colisions (on failure, Agent is ignored).
                 success = self.place_at(agent, agent.position, relocate=True)
                 if success:
                     # Update agents list and tracked_agent (only the first time).
                     self.agents.append(agent)
-                    # self.energy_map[agent.position[0], agent.position[1]] = agent.energy
                     if self.tracked_agent is None:
                         self.tracked_agent = agent
 
-        # Put in some BLOCKS, quantity based on width.
+        # Put in some BLOCKS.
         self.blocks = []
-        for b in block_def:  # List of all types of block in the world.
-            if (b[0] is None):  # Unspecified number of blocks.
+        for b_def in blocks_def:  # List of all types of block in the world.
+            if (b_def.n_instances is None): 
+                # Unspecified number of blocks; base on width.
                 n_random_blocks = (self.width * self.n_blocks_rnd) // 1  # abs. max variation.
                 n_random_blocks = self.width + random.randint(-n_random_blocks, n_random_blocks)
-            else:  # Specified # of blocks.
-                n_random_blocks = b[0]
+            else:
+                # Specified No. of blocks.
+                n_random_blocks = b_def.n_instances
 
             n = 0
             while n < n_random_blocks:
-                block = things.Block(b[1], b[2], b[3], b[4], b[5])
+                block = things.Block(b_def.thing_settings)
                 _ = self.place_at(block)  # Put in random position if possible (fail condition ignored).
                 self.blocks.append(block)
                 n += 1
@@ -205,7 +211,7 @@ class World:
 
         if success:
             # The move is possible, (re)locate Thing.
-            if thing.position[0] is not None and thing.position[1] is not None:  # TODO: use .position wo [..]
+            if thing.position != things.RANDOM_POSITION:
                 # The Thing was already in the world; clear out old place.
                 self.things[thing.position[0], thing.position[1]] = None
                 self.energy_map[thing.position[0], thing.position[1]] = 0
@@ -366,7 +372,6 @@ class World:
                 # Take energy from prey (limited by prey's energy).
                 # max_possible_bite = min(agent.bite_power, agent.max_energy - agent.energy)
                 energy_taken = self.update_agent_energy(prey, -agent.bite_power)
-                # self.energy_map[prey.position[0], prey.position[1]] = prey.energy
                 action_delta += - energy_taken
                 success = action_delta > 0
             else:
@@ -379,7 +384,6 @@ class World:
 
         # Update energy for agent and world.
         _ = self.update_agent_energy(agent, energy_delta)  # Dropped energy is lost.
-        # self.energy_map[agent.position[0], agent.position[1]] = agent.energy
 
         return success, energy_delta
 

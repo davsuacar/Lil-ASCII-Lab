@@ -5,6 +5,9 @@
 #        └- Agent
 ###############################################################################
 
+from collections import namedtuple
+import numpy as np
+
 import ai
 import ui
 
@@ -17,7 +20,7 @@ Thing_settings_def = namedtuple("Thing_settings_def", [
     'aspect',  # One single Unicode character (e.g. "⚉").
     'color',  # Its normal color (e.g. ui.CYAN). (See ui.py module).
     'intensity',  # Its normal intensity (e.g. ui.BRIGHT). (See ui.py module).
-    'initial_position',  # Its initial position (or RND). If 'n_instances' > 1, it will be used for the first one only.
+    'initial_position'  # Its initial position (or RND). If 'n_instances' > 1, it will be used for the first one only.
 ])
 
 # Constants
@@ -35,7 +38,7 @@ pass  # Currently Tiles are defined through common "Thing_settings_def".
 
 Block_def = namedtuple("Block_def", [
     'n_instances',  # Number of Blocks to place (e.g. 20).
-    'thing_settings',  # Generic settings common to all Things (Tile, Block, Agent).
+    'thing_settings'  # Generic settings common to all Things (Tile, Block, Agent).
 ])
 
 ###############################################################################
@@ -47,15 +50,15 @@ Agent_def = namedtuple("Agent_def", [
     'thing_settings',  # Generic settings common to all Things (Tile, Block, Agent).
     'energy_settings',  # Energy-related settings (see 'Energy_settings_def').
     'ai_settings'  # Functions used for perception, action and learning.
-    ])
+])
 
 Energy_settings_def = namedtuple("Energy_settings_def", [
-    'initial_energy',  # Initial energy assigned at start.
-    'maximum_energy',  # Maximum energy the agent can acquire.
-    'bite_power',  # Amount of energy the agent can take with one bite.
-    'step_cost',  # Energy consumed on each world step regardless of action chosen.
-    'move_cost'  # Energy consumed for moving to an adjacent tile.
-    'recycling_type'  # Dynamics ruling its energy losses and 'death'.
+    'initial_energy',  # Initial energy assigned at start [>= 0].
+    'maximum_energy',  # Maximum energy the agent can acquire [> 0].
+    'bite_power',  # Amount of energy the agent can take with one bite [>= 0].
+    'step_cost',  # Energy consumed on each world step regardless of action chosen [<= 0].
+    'move_cost',  # Energy consumed for moving to an adjacent tile [<= 0].
+    'recycling_type'  # Dynamics ruling its energy losses and 'death' [NON_RECHARGEABLE, RECHARGEABLE, EVERLASTING, RESPAWNABLE].
 ])
 
 # Constants:
@@ -102,13 +105,13 @@ TILE_DEF = (
 #   Position: (a tuple, currently ignored).
 
 BLOCKS_DEF = (
-    #   (None, "full-block", " ", ui.BLACK, ui.BRIGHT, RANDOM_POSITION),
-    #   (10, "fence", "#", ui.WHITE, ui.BRIGHT, RANDOM_POSITION),
     Block_def(
         20,
         Thing_settings_def("block", "▢", ui.BLUE, ui.BRIGHT, RANDOM_POSITION)
-    )
+    ),
 )
+    #   (None, "full-block", " ", ui.BLACK, ui.BRIGHT, RANDOM_POSITION),
+    #   (10, "fence", "#", ui.WHITE, ui.BRIGHT, RANDOM_POSITION),
 
 AGENTS_DEF = (
     # With real minds:
@@ -132,11 +135,11 @@ AGENTS_DEF = (
     ),
     Agent_def(
         0,
-        Thing_settings_def(0, "foe", "Д", ui.MAGENTA, ui.BRIGHT, RANDOM_POSITION),
+        Thing_settings_def("foe", "Д", ui.MAGENTA, ui.BRIGHT, RANDOM_POSITION),
         Energy_settings_def(100, 110, 10, -0.1, -1, RESPAWNABLE),
         AI_settings_def(ai.full_info, ai.wanderer, ai.no_learning)
     ),
-    
+
     # Mindeless:
     Agent_def(
         5,
@@ -189,26 +192,33 @@ class Agent(Thing):
     # Default class for Agents.
     num_agents = 0
 
-    def __init__(self, a_def, agent_suffix=None):
-        # Initialize inherited and specific attributes.
-        super().__init__(name=a_def[0], aspect=a_def[1], color=a_def[2], intensity=a_def[3], position=a_def[4])
+    def __init__(self,
+                 thing_settings,
+                 energy_settings,
+                 ai_settings,
+                 agent_suffix=None):
+        # Initialize inherited attributes, customizing 'name'.
+        super().__init__(thing_settings)
         if agent_suffix is not None:
-            self.name = "{}_{}".format(self.name, str(agent_suffix))
-        self.energy = a_def[5][0]
-        self.max_energy = a_def[5][1]
-        self.bite_power = a_def[5][2]
-        self.step_cost = a_def[5][3]
-        self.move_cost = a_def[5][4]
+            self.name = "{}.{}".format(self.name, str(agent_suffix))
 
-        # Attributes for recycling.
-        self.recycling = a_def[6]
+        # Attributes related to energy.
+        self.energy = energy_settings.initial_energy
+        self.max_energy = energy_settings.maximum_energy
+        self.bite_power = energy_settings.bite_power
+        self.step_cost = energy_settings.step_cost
+        self.move_cost = energy_settings.move_cost
+        self.recycling = energy_settings.recycling_type
+        self.acceptable_energy_drop = 2*self.step_cost + self.move_cost  # Heuristic threshold for UI highlights.
+
+        # Attributes related to AI:
+        self.perception = ai_settings.perception
+        self.action = ai_settings.action
+        self.learning = ai_settings.learning
+
+        # Keep original attributes for recycling.
         self.original_color = self.color
         self.original_intensity = self.intensity
-
-        # Agent's AI:
-        self.perception = a_def[7][0]
-        self.action = a_def[7][1]
-        self.learning = a_def[7][2]
 
         # Initialize internal variables.
         self.initialize_state()
@@ -222,6 +232,7 @@ class Agent(Thing):
         self.current_energy_delta = 0
         self.chosen_action = ai.VOID_ACTION
         self.chosen_action_success = True
+        self.action_icon = ""
         self.learn_result = None
 
     def pre_step(self):
@@ -264,6 +275,12 @@ class Agent(Thing):
 
         # Update internal variables, aspect, etc.
         self.chosen_action_success = success
+        action = self.chosen_action[1].tolist()
+        if action in ai.XY_8_DELTAS_list:
+            action_idx = ai.XY_8_DELTAS_list.index(action)
+            self.action_icon = ai.XY_8_ICONS[action_idx]
+        else:
+            self.action_icon = ""
         # TODO: Update aspect (character(s) displayed, color...)?
 
         # Update policy (learning). TODO: Consider moving this to a post_step() method.

@@ -18,32 +18,39 @@ MOVE = "MOVE"
 EAT = "EAT"
 
 # (x, y) deltas for all 8 possible adjacent tiles (excluding (0,0)).
-XY_8_DELTAS = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
-XY_8_ICONS = ("◣", "◀", "◤", "▼", "▲", "◢", "▶", "◥")
+XY_8_DELTAS = np.array(
+    ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
+)
+XY_8_DELTAS_list = XY_8_DELTAS.tolist()  # Aux. list for "in" operations.
+# XY_8_ICONS = ("◣", "◀", "◤", "▼", "▲", "◢", "▶", "◥")
+XY_8_ICONS = ("↙", "←", "↖", "↓", "↑", "↘", "→", "↗")
+
 OFF_BOARD = -1000  # Value signalling an "illegal" out-of-the-board tile.
 
-# Action definitions:
-# An action consists of a verb and some arguments, expressed between brackets.
+# Action_def: definitions of possible actions.
+# An action consists of:
+# - a verb (e.g. MOVE, EAT).
+# - some action-dependent arguments, expressed between brackets.
 
-Action = namedtuple("Action", "arguments radius energy_ratio")
+Action_def = namedtuple("Action_def", "arguments radius energy_ratio")
 
 ACTIONS_DEF = dict(
     # PASSIVE action.
-    NONE=Action(
-        [],  # arguments: Not required.
+    NONE=Action_def(
+        np.array([]),  # arguments: Not required.
         0,  # radius: local.
         0.0  # energy_ratio: 0x -> No energy consumption.
     ),
     # MOVING to adjacent relative coordinates.
-    MOVE=Action(
-        np.array(XY_8_DELTAS),  # arguments: ([x, y] delta) for a given [x0, y0].
+    MOVE=Action_def(
+        XY_8_DELTAS,  # arguments: ([x, y] delta) for a given [x0, y0].
         1,  # radius: 1 tile.
         1.0  # energy_ratio: 1x -> Unmodified ratio for 1-tile moves.
     ),
 
     # EATING energy from adjacent relative coordinates.
-    EAT=Action(
-        np.array(XY_8_DELTAS),  # arguments: ([x, y] delta) for a given [x0, y0].
+    EAT=Action_def(
+        XY_8_DELTAS,  # arguments: ([x, y] delta) for a given [x0, y0].
         1,  # radius: 1 tile.
         0.0  # energy_ratio: 0x -> No energy consumption.
     ),
@@ -130,10 +137,10 @@ def obtain_best_bite(world, position, radius=1):
 
     if energy_submap[biggest[0], biggest[1]] > 0:
         # Generate tuple leading to highest value.
-        best_bite_delta = (
+        best_bite_delta = np.array([
             submap_origin[0] + biggest[0] - position[0],
             submap_origin[1] + biggest[1] - position[1]
-        )
+        ])
 
     else:
         # Handle void result.
@@ -247,7 +254,7 @@ def wanderer2(state):
 
     agent, world = state  # Extract both complete objects.
 
-    hunger_threshold = 0.6  # Energy ratio below which eating is prioritary.
+    hunger_threshold = 0.5  # Energy ratio below which eating is prioritary.
 
     # Default action is to rest.
     action = VOID_ACTION
