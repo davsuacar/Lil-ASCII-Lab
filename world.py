@@ -16,8 +16,8 @@ import ui
 # This is what the world simulated will look like:
 WORLD_DEF = dict(
     name="Random Blox",  # Descriptive string.
-    width=10,  # Defining coordinate x from 0 to width - 1
-    height=10,  # Defining coordinate y from 0 to height - 1
+    width=30,  # Defining coordinate x from 0 to width - 1
+    height=20,  # Defining coordinate y from 0 to height - 1
     bg_color=ui.BLACK,  # background color (see ui.py module).
     bg_intensity=ui.NORMAL,  # background intensity (see ui.py module).
     n_blocks_rnd=0.4,  # % of +/- randomness in number of blocks [0, 1]
@@ -224,7 +224,7 @@ class World:
         return success
 
     def update_agent_energy(self, agent, energy_delta):
-        # Execute agent's method for energy update and
+        # Execute agent's method to update its 'energy' and then
         # the world's internal status (self.energy_map).
         energy_taken = agent.update_energy(energy_delta)
         self.energy_map[agent.position[0], agent.position[1]] = agent.energy
@@ -241,7 +241,8 @@ class World:
         return result
 
     def tile_with_agent(self, position):
-        # Check if a given position exists within world's limits and has an agent on it.
+        # Check if a given position exists within world's limits and has an
+        # agent on it.
         x, y = position
         if (0 <= x <= self.width - 1) and (0 <= y <= self.height - 1):
             result = isinstance(self.things[x, y], things.Agent)
@@ -368,7 +369,8 @@ class World:
             # Eating action.
             prey = self.things[agent.position[0] + action_arguments[0],
                                agent.position[1] + action_arguments[1]]
-            if prey is not None:  # TODO: Limit to 'Agent' class (avoiding biting a 'Block')
+            if prey is not None:
+                # TODO: Limit to 'Agent' class (avoiding biting a 'Block')
                 # Take energy from prey (limited by prey's energy).
                 # max_possible_bite = min(agent.bite_power, agent.max_energy - agent.energy)
                 energy_taken = self.update_agent_energy(prey, -agent.bite_power)

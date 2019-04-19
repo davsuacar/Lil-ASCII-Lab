@@ -37,8 +37,9 @@ KEY_RIGHT = curses.KEY_RIGHT  # Right-arrow
 KEY_SRIGHT = curses.KEY_SRIGHT  # Shifted Right arrow
 
 # Other constants.
-LOW_ENERGY_THRESHOLD = 0.20  # Below this % energy is displayed as dangerously low.
+LOW_ENERGY_THRESHOLD = 0.25  # Below this % energy is displayed as dangerously low.
 DEAD_AGENT_COLOR = (BLACK, BRIGHT)
+ENERGY_DROP_COLOR = RED
 
 # Output settings: Define how I/O will happen:
 UI_def = dict(
@@ -312,8 +313,8 @@ class UI:
                                              thing.color + NORMAL)
                         elif thing.current_energy_delta < thing.acceptable_energy_drop:
                             # Highlight huge energy drop.
-                            pair = self.pair(RED + BRIGHT,
-                                             RED + NORMAL)
+                            pair = self.pair(ENERGY_DROP_COLOR + BRIGHT,
+                                             ENERGY_DROP_COLOR + NORMAL)
                         else:
                             # Otherwise, use agent's and world's regular color/intensity.
                             pair = self.pair(thing.color + thing.intensity,

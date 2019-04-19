@@ -6,7 +6,6 @@
 ###############################################################################
 
 from collections import namedtuple
-import numpy as np
 
 import ai
 import ui
@@ -106,7 +105,7 @@ TILE_DEF = (
 
 BLOCKS_DEF = (
     Block_def(
-        20,
+        100,
         Thing_settings_def("block", "▢", ui.BLUE, ui.BRIGHT, RANDOM_POSITION)
     ),
 )
@@ -116,25 +115,25 @@ BLOCKS_DEF = (
 AGENTS_DEF = (
     # With real minds:
     Agent_def(
-        1,
+        5,
         Thing_settings_def("Omi", "Ω", ui.CYAN, ui.BRIGHT, RANDOM_POSITION),
         Energy_settings_def(100, 110, 5, -0.1, -0.5, RESPAWNABLE),
         AI_settings_def(ai.full_info, ai.wanderer2, ai.no_learning)
     ),
     Agent_def(
-        10,
+        15,
         Thing_settings_def("bug", "⚉", ui.GREEN, ui.BRIGHT, RANDOM_POSITION),
         Energy_settings_def(100, 110, 5, -0.1, -0.1, NON_RECHARGEABLE),
         AI_settings_def(ai.full_info, ai.wanderer, ai.no_learning)
     ),
     Agent_def(
-        0,
+        2,
         Thing_settings_def("killer", "Ѫ", ui.RED, ui.BRIGHT, RANDOM_POSITION),
-        Energy_settings_def(100, 110, 5, -0.1, -0.1, NON_RECHARGEABLE),
+        Energy_settings_def(100, 110, 25, -0.1, -0.1, NON_RECHARGEABLE),
         AI_settings_def(ai.full_info, ai.wanderer, ai.no_learning)
     ),
     Agent_def(
-        0,
+        5,
         Thing_settings_def("foe", "Д", ui.MAGENTA, ui.BRIGHT, RANDOM_POSITION),
         Energy_settings_def(100, 110, 10, -0.1, -1, RESPAWNABLE),
         AI_settings_def(ai.full_info, ai.wanderer, ai.no_learning)
@@ -142,7 +141,7 @@ AGENTS_DEF = (
 
     # Mindeless:
     Agent_def(
-        5,
+        15,
         Thing_settings_def("energy", "♥", ui.RED, ui.NORMAL, RANDOM_POSITION),
         Energy_settings_def(50, 50, 0, -0.001, 0, RESPAWNABLE),
         AI_settings_def(None, None, None)
@@ -275,26 +274,29 @@ class Agent(Thing):
 
         # Update internal variables, aspect, etc.
         self.chosen_action_success = success
+
+        # UI: Capture action's icon, if any.
         action = self.chosen_action[1].tolist()
         if action in ai.XY_8_DELTAS_list:
             action_idx = ai.XY_8_DELTAS_list.index(action)
             self.action_icon = ai.XY_8_ICONS[action_idx]
         else:
             self.action_icon = ""
+
         # TODO: Update aspect (character(s) displayed, color...)?
-
-        # Update policy (learning). TODO: Consider moving this to a post_step() method.
-        self.learn_result = self.learning(
-            self.current_state,
-            self.chosen_action,
-            self.current_energy_delta)
-
-        # Now the 'step' is totally finished.
-        self.steps += 1
 
     def post_step(self):
         # Actions on agent after a step is run.
-        pass
+
+        # Update policy (learning).
+        if self.learning is not None:
+            self.learn_result = self.learning(
+                self.current_state,
+                self.chosen_action,
+                self.current_energy_delta)
+
+        # Now the 'step' is finished.
+        self.steps += 1
 
     def respawn(self):
         # Restablish an agent back to its optimal state.
