@@ -8,6 +8,7 @@
   * Escape from attacks:
     * Prioritize moving over feeding/no-action.
     * Choose best direction?
+  * Prevent 2 hungry wanderers from coupling for good.
 
 * Create AI for 'hunter':
   * Not to miss adjacent food... ever!
@@ -40,14 +41,16 @@ Future:
 
 Future:
 
-* Footer: Allow 2 lines when board is too narrow for text to fit.
 * ui.draw(): allow UI action (select a new agent) on paused world by decoupling draw/step loops (draw would loop drawing the same frame till user moves on)!
+* Footer: Allow 2 lines when board is too narrow for text to fit.
 * Board: make "dead" respawnable agents BLINK.
 * Tracker (aesthetics): Review tracker's layout (split sub-areas?).
-* Improve highlight for tracked agent? a) between brackets; b) box-characters.
 * Add color to logo at program exit.
 * Implement basic agent animation in "aspect" (2 or 3 looping chars).
 * Tracking: Maintain agents' heatmaps (where they've been around).
+* Allow checkered background by alternating line patterns:
+  "▐█▌ ▐█▌ ▐█▌ ▐█▌ ▐█▌ ▐█▌  "
+  "  ▐█▌ ▐█▌ ▐█▌ ▐█▌☻▐█▌ ▐█▌"
 * Handle resize terminal without exiting.
 * Detect when resizing the terminal would exceed screen dimensions.
 
@@ -89,6 +92,7 @@ Future:
 
 1.0:
 
+* Provide placeholder ML templates for the basic AI methods.
 * Restrict maximum size of the world.
 * Extract all world & agents config. to external yaml files.
 * Add arguments to main program (module argparse).
@@ -134,6 +138,7 @@ World dynamics:
 
 UI:
 
+* Improve highlight for tracked agent (blinking tiles around).
 * Add Tab control during step-by-step mode.
 * Add step-by-step control in "pause" menu to move fwd. 1 step.
 * Tracker: Show current world speed (at fps, full-speed).

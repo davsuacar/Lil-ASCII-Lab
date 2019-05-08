@@ -4,9 +4,11 @@
 
 ###############################################################
 
+# Libraries.
 from curses import wrapper
 import time
 
+# Modules.
 import world as w
 import ui
 

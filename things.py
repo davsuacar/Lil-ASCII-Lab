@@ -1,14 +1,20 @@
 ###############################################################################
 # Classess of Thing in an LAL 'World':
-# Thing --- Tile
-#        ├- Block
-#        └- Agent
+# Thing
+#   ├- Tile
+#   ├- Block
+#   └- Agent
 ###############################################################################
 
+# Libraries.
+import numpy as np
 from collections import namedtuple
 
+# Modules.
 import ai
+import act
 import ui
+
 
 ###############################################################################
 # THING:
@@ -73,7 +79,7 @@ RESPAWNABLE = 'Respawnable'  # Regular loss; resurrected after death at random l
 #       If None, ai.default_senses() is assigned.
 #   Mind/action:
 #       The function processing perception to output actions.
-#       If None, a NO_ACTION will always be assumed.
+#       If None, a VOID_ACTION will always be assumed.
 #   Mind/learning:
 #       The function updating the acting policy after an action is executed.
 #       In None, the learning step is simply skipped.
@@ -84,7 +90,7 @@ AI_settings_def = namedtuple("AI_settings_def", [
 ])
 
 ###############################################################################
-# World's casting
+# World's 'casting'
 # All things to populate this instance of 'World'.
 ###############################################################################
 
@@ -139,7 +145,7 @@ AGENTS_DEF = (
         AI_settings_def(ai.full_info, ai.wanderer, ai.no_learning)
     ),
 
-    # Mindeless:
+    # Mindless:
     Agent_def(
         15,
         Thing_settings_def("energy", "♥", ui.RED, ui.NORMAL, RANDOM_POSITION),
@@ -156,9 +162,10 @@ AGENTS_DEF = (
 
 ###############################################################################
 # Classess of Thing in an LAL 'World':
-# Thing --- Tile
-#        ├- Block
-#        └- Agent
+# Thing
+#   ├- Tile
+#   ├- Block
+#   └- Agent
 ###############################################################################
 
 
@@ -225,36 +232,55 @@ class Agent(Thing):
         Agent.num_agents += 1
 
     def initialize_state(self):
-        # Initialize current_state, current_energy_delta and chosen_action.
+        # Initialize agent-specific attributes.
         self.steps = 0
         self.current_state = None
         self.current_energy_delta = 0
-        self.chosen_action = ai.VOID_ACTION
+        self.touch_map = np.zeros([3, 3])
+        self.chosen_action = act.VOID_ACTION
         self.chosen_action_success = True
         self.action_icon = ""
         self.learn_result = None
+
+    def reset_touch_map(self):
+        # Set all surrounding tiles to 0.
+        self.touch_map[:] = 0
 
     def pre_step(self):
         # Reset agents' step variables before a step is run.
         self.current_energy_delta = 0
 
-    def update_energy(self, delta):
+    def update_energy(self, energy_delta, delta_source_position=None):
         # Handle 'energy' updates, including 'recycling' cases.
+        # Updates 'touch_map' at 'energy_source_position':
+        #   - energy change passed is allocated to the source position passed.
+        #   - when no source position is passed, local position is assumed,
+        #     i.e. (1, 1) which is the center of the map.
         # Updates 'aspect' if needed.
 
-        # ENERGY
         if self.recycling == EVERLASTING:
-            # No change to agent's energy despite the delta.
+            # ENERGY:
+            # No change to agent's energy despite the energy_delta.
             self.current_energy_delta = 0
-            energy_used = delta
+            energy_used = energy_delta
+            # No need to update self.touch_map.
         else:
+            # ENERGY:
             # Keep within 0 and agent's max_energy.
             prev_energy = self.energy
-            self.energy = max(min(self.energy + delta, self.max_energy), 0)
-            energy_used = self.energy - prev_energy
+            self.energy = max(min(self.energy + energy_delta, self.max_energy), 0)
+            energy_used = self.energy - prev_energy  # Actual impact on agent.
             self.current_energy_delta += energy_used
+            # Update 'touch_map'.
+            if delta_source_position is None:
+                delta_source_position = self.position
+            self.touch_map[
+                1 + delta_source_position[0] - self.position[0],
+                1 + delta_source_position[1] - self.position[1]
+            ] += energy_used
 
-            # ASPECT: Check for death condition:
+            # ASPECT:
+            # Check for death condition:
             if self.energy <= 0:
                 # Update aspect (RESPAWNEABLE condition handled by world).
                 self.color, self.intensity = ui.DEAD_AGENT_COLOR
@@ -274,12 +300,13 @@ class Agent(Thing):
 
         # Update internal variables, aspect, etc.
         self.chosen_action_success = success
+        self.reset_touch_map()
 
         # UI: Capture action's icon, if any.
         action = self.chosen_action[1].tolist()
-        if action in ai.XY_8_DELTAS_list:
-            action_idx = ai.XY_8_DELTAS_list.index(action)
-            self.action_icon = ai.XY_8_ICONS[action_idx]
+        if action in act.XY_8_DELTAS:
+            action_idx = act.XY_8_DELTAS.index(action)
+            self.action_icon = act.XY_8_ICONS[action_idx]
         else:
             self.action_icon = ""
 

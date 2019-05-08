@@ -4,12 +4,16 @@
 
 ###############################################################
 
+# Libraries.
 import numpy as np
 import random
 import curses
 import os
 import datetime
 from curses import wrapper
+
+# Modules
+pass
 
 # Constants based on curses' 8 basic colors:
 BLACK = curses.COLOR_BLACK
@@ -288,11 +292,13 @@ class UI:
                     tile = self.world.ground[x, y]
                     text = tile.aspect + self.spc_str
                     if (x_tracked - 1 <= x <= x_tracked + 1) and (y_tracked - 1 <= y <= y_tracked + 1):
-                        color, intensity = WHITE, BRIGHT
+                        # Hightlight tile (contiguous to tracked agent).
+                        color, intensity, blink = WHITE, BRIGHT, curses.A_BLINK
                     else:
-                        color, intensity = tile.color, tile.intensity
+                        # Regular tile.
+                        color, intensity, blink = tile.color, tile.intensity, curses.A_NORMAL
                     pair = self.pair(color + intensity, self.world.bg_color + self.world.bg_intensity)
-                    self.board.addstr(self.world.height - y - 1, x_screen, text, pair | curses.A_NORMAL)
+                    self.board.addstr(self.world.height - y - 1, x_screen, text, pair | blink)
                 else:
                     # Some AGENT/BLOCK here.
                     if thing in self.world.blocks:
@@ -358,7 +364,7 @@ class UI:
             self.tracker.addstr("▉", red_color_pair)
         self.tracker.addstr(" {}% ]".format(energy_percent), fg_bright_color_pair)
 
-        # AUX info: printed for trackinkd purposes if not empty!
+        # AUX info: printed for trackinkd purposes if not empty.
         if self.world.aux_msg != "":
             self.tracker.addstr(1, 2, self.world.aux_msg, fg_color_pair)
 

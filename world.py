@@ -4,13 +4,16 @@
 
 ###############################################################
 
+# Libraries.
 import numpy as np
 import random
 import time
 
+# Modules.
 import things
-import ai
+import act
 import ui
+
 
 # World definition:
 # This is what the world simulated will look like:
@@ -39,6 +42,9 @@ Simulation_def = dict(
 # Constants:
 WORLD_DEFAULT_FPS = 5  # Fall-back world speed (in frames-per-second).
 WORLD_DEFAULT_SPF = 1 / WORLD_DEFAULT_FPS  # (the same in seconds-per-frame).
+
+OCCUPIED_TILE = 0  # Multiply to ZERO OUT values on maps.
+UNOCCUPIED_TILE = 1  # Multiply to KEEP values on maps.
 
 ###############################################################
 
@@ -75,8 +81,13 @@ class World:
         random.seed(seed)
 
         self.steps = 0
-        self.things = np.full((self.width, self.height), None)  # A grid for agents and blocks.
-        self.energy_map = np.zeros((self.width, self.height))  # A grid tracking energy on each tile.
+        # A grid for agents and blocks [references].
+        self.things = np.full((self.width, self.height), None)
+        # A grid tracking energy [floats] on each tile.
+        self.energy_map = np.zeros((self.width, self.height))
+        # A grid tracking occupation [1 / 0] of each tile.
+        self.occupation_bitmap = np.full(
+            (self.width, self.height), UNOCCUPIED_TILE)
 
         # Put TILES on the ground.
         self.ground = np.full((self.width, self.height), None)  # Fill in the basis of the world.
@@ -113,7 +124,7 @@ class World:
         # Put in some BLOCKS.
         self.blocks = []
         for b_def in blocks_def:  # List of all types of block in the world.
-            if (b_def.n_instances is None): 
+            if (b_def.n_instances is None):
                 # Unspecified number of blocks; base on width.
                 n_random_blocks = (self.width * self.n_blocks_rnd) // 1  # abs. max variation.
                 n_random_blocks = self.width + random.randint(-n_random_blocks, n_random_blocks)
@@ -215,18 +226,26 @@ class World:
                 # The Thing was already in the world; clear out old place.
                 self.things[thing.position[0], thing.position[1]] = None
                 self.energy_map[thing.position[0], thing.position[1]] = 0
+                self.occupation_bitmap[
+                    thing.position[0], thing.position[1]
+                    ] = UNOCCUPIED_TILE
 
             self.things[position[0], position[1]] = thing
             if type(thing) is things.Agent:
                 self.energy_map[position[0], position[1]] = thing.energy
+            self.occupation_bitmap[
+                position[0], position[1]
+                ] = OCCUPIED_TILE
             thing.position = position
 
         return success
 
-    def update_agent_energy(self, agent, energy_delta):
-        # Execute agent's method to update its 'energy' and then
+    def update_agent_energy(self, agent, energy_delta, energy_source_position=None):
+        # Execute agent's method to update its 'energy' state and then
         # the world's internal status (self.energy_map).
-        energy_taken = agent.update_energy(energy_delta)
+        energy_taken = agent.update_energy(
+            energy_delta,
+            energy_source_position)
         self.energy_map[agent.position[0], agent.position[1]] = agent.energy
 
         return energy_taken
@@ -296,7 +315,7 @@ class World:
             action = agent.choose_action(world=self)
             # Try to execute action.
             success, energy_delta = self.execute_action(agent, action)
-            # Update agent's learnings and other internal information.
+            # Update agent's internal information.
             agent.update_after_action(success)
 
         # Update the world's info after step.
@@ -324,7 +343,7 @@ class World:
         # Call all agents' post_step() here.
         for agent in self.agents:
             if agent.energy <= 0 and agent.recycling == things.RESPAWNABLE:
-                # Respawn dead agent on new random places.
+                # Respawn dead agent on new random place.
                 agent.respawn()
                 _ = self.place_at(agent)
             else:
@@ -337,7 +356,11 @@ class World:
 
     def execute_action(self, agent, action):
         # Check if the action is feasible and execute it returning results.
-        action_type, action_arguments, action_energy_ratio = action
+
+        # Initialize internal variables.
+        action_type, action_arguments = action
+        action_energy_ratio = act.ACTIONS_DEF[action_type].energy_ratio
+
         # Calculate energy cost IF action is actually made.
         action_delta = agent.move_cost * action_energy_ratio
         # Manage abandoned_position, for cases when the agent moves.
@@ -348,13 +371,15 @@ class World:
             success = False
             action_delta = 0
             energy_delta = action_delta + agent.step_cost
+            self.update_agent_energy(agent, energy_delta)
 
-        elif action_type == ai.NONE:
+        elif action_type == act.NONE:
             # Rest action.
             success = True
             energy_delta = action_delta + agent.step_cost
+            self.update_agent_energy(agent, energy_delta)
 
-        elif action_type == ai.MOVE:
+        elif action_type == act.MOVE:
             # Update locations [try to], checking if destination tile is free.
             success = self.place_at(agent,
                                     [agent.position[0] + action_arguments[0],
@@ -362,30 +387,40 @@ class World:
                                     )
             if not success:
                 action_delta = 0
-                # TODO: Penalize collisions through energy_delta?
+                # TODO: Penalize collisions?
             energy_delta = action_delta + agent.step_cost
+            self.update_agent_energy(agent, energy_delta)
 
-        elif action_type == ai.EAT:
-            # Eating action.
+        elif action_type == act.EAT:
+            # Firstly, update energy spent in step for whichever result,
+            # (allowing full replenishment).
+            _ = self.update_agent_energy(agent, agent.step_cost) # Dropped energy is lost.
+            
             prey = self.things[agent.position[0] + action_arguments[0],
                                agent.position[1] + action_arguments[1]]
             if prey is not None:
-                # TODO: Limit to 'Agent' class (avoiding biting a 'Block')
                 # Take energy from prey (limited by prey's energy).
-                # max_possible_bite = min(agent.bite_power, agent.max_energy - agent.energy)
-                energy_taken = self.update_agent_energy(prey, -agent.bite_power)
+                # TODO: Limit to 'Agent' class (avoiding biting a 'Block')
+                # TODO: max_possible_bite = min(agent.bite_power, agent.max_energy - agent.energy)
+                energy_taken = self.update_agent_energy(
+                    prey,
+                    -agent.bite_power,
+                    agent.position)
                 action_delta += - energy_taken
                 success = action_delta > 0
+                # Give energy to eating agent.
+                _ = self.update_agent_energy(
+                    agent,
+                    action_delta,
+                    prey.position)
             else:
                 success = False
                 action_delta = 0
+
             energy_delta = action_delta + agent.step_cost
 
         else:
             raise Exception('Invalid action type passed: {}.'.format(action_type))
-
-        # Update energy for agent and world.
-        _ = self.update_agent_energy(agent, energy_delta)  # Dropped energy is lost.
 
         return success, energy_delta
 

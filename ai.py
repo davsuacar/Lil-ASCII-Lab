@@ -1,147 +1,72 @@
-###############################################################
+###############################################################################
 # AI
-# for "Lil' ASCII Lab" and its entities...
+# Artificial Intelligence for "Lil' ASCII Lab"'s Agents...
+###############################################################################
 
-###############################################################
-
+# Libraries.
 import numpy as np
 from numpy import unravel_index
 import random
-from collections import namedtuple
 
-###############################################################
+# Modules
+import act
+
+###############################################################################
 # CONSTANTS
 
-# Names of actions:
-NONE = "NONE"
-MOVE = "MOVE"
-EAT = "EAT"
+OFF_BOARD = -1000000  # Value signalling an "illegal" out-of-the-board tile.
 
-# (x, y) deltas for all 8 possible adjacent tiles (excluding (0,0)).
-XY_8_DELTAS = np.array(
-    ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
-)
-XY_8_DELTAS_list = XY_8_DELTAS.tolist()  # Aux. list for "in" operations.
-# XY_8_ICONS = ("◣", "◀", "◤", "▼", "▲", "◢", "▶", "◥")
-XY_8_ICONS = ("↙", "←", "↖", "↓", "↑", "↘", "→", "↗")
-
-OFF_BOARD = -1000  # Value signalling an "illegal" out-of-the-board tile.
-
-# Action_def: definitions of possible actions.
-# An action consists of:
-# - a verb (e.g. MOVE, EAT).
-# - some action-dependent arguments, expressed between brackets.
-
-Action_def = namedtuple("Action_def", "arguments radius energy_ratio")
-
-ACTIONS_DEF = dict(
-    # PASSIVE action.
-    NONE=Action_def(
-        np.array([]),  # arguments: Not required.
-        0,  # radius: local.
-        0.0  # energy_ratio: 0x -> No energy consumption.
-    ),
-    # MOVING to adjacent relative coordinates.
-    MOVE=Action_def(
-        XY_8_DELTAS,  # arguments: ([x, y] delta) for a given [x0, y0].
-        1,  # radius: 1 tile.
-        1.0  # energy_ratio: 1x -> Unmodified ratio for 1-tile moves.
-    ),
-
-    # EATING energy from adjacent relative coordinates.
-    EAT=Action_def(
-        XY_8_DELTAS,  # arguments: ([x, y] delta) for a given [x0, y0].
-        1,  # radius: 1 tile.
-        0.0  # energy_ratio: 0x -> No energy consumption.
-    ),
-)
-
-VOID_ACTION = [NONE, ACTIONS_DEF[NONE].arguments, ACTIONS_DEF[NONE].energy_ratio]
+# Precalculated maps:
+DISTANCE_MAP_2_TILES = [
+    [2, 2, 2, 2, 2],
+    [2, 1, 1, 1, 2],
+    [2, 1, 0, 1, 2],
+    [2, 1, 1, 1, 2],
+    [2, 2, 2, 2, 2]
+]
+DISTANCE_MAP_2_TILES_CENTER = [2, 2]
 
 NO_PERCEPTION = None
 NO_ACTION = None
 NO_LEARNING = None
 
 
-###############################################################
+###############################################################################
 # Minds: Auxiliary functions
 #
 # Used by Perception and Action functions.
 
-def obtain_possible_moves(world, position, moves_delta_list):
-    '''
-    :param world:
-    :param position:
-    :param moves_delta_list:
-    :return: Return a list with the deltas from 'moves_delta_list' which if applied to given 'position', would land on an emptly tile in 'world'.
-    '''
+def obtain_bite(energy_map, position, radius=1, highest=False):
+    # Return a delta from the given position leading to a position with
+    # some energy within the radius given, or 'None' if none is found.
+    # If 'best' is True, the delta leading to the highest energy around is
+    # returned.
 
-    possible_moves = [delta for delta in moves_delta_list
-                      if world.tile_is_empty(position + delta)]
-    return possible_moves
+    # Obtain submap around position ant tuple with its origin.
+    energy_submap, submap_origin = copy_submap(
+        energy_map,
+        position,
+        radius)
 
+    # Check whether there's some available bite first.
+    max_energy_around = np.nanmax(energy_submap)
 
-def obtain_possible_bites(world, position, moves_delta_list):
-    '''
-    :param world:
-    :param position:
-    :param moves_delta_list:
-    :return: Return a list with the deltas from 'moves_delta_list' which, if biting to given 'position', would bite some agent in 'world'.
-    '''
+    if max_energy_around > 0:
+        # Go for that bite.
+        if highest:
+            # Obtain relative position of HIGHEST values in submap.
+            bites_list = np.argwhere(energy_submap == max_energy_around)
+        else:
+            # Obtain relative position of any POSITIVE values in sumbap.
+            bites_list = np.argwhere(energy_submap > 0)
 
-    possible_bites = [delta for delta in moves_delta_list
-                      if world.tile_with_agent(position + delta)]
-    return possible_bites
-
-
-def get_energy_submap(world, position, radius=1):
-    # Return:
-    # energy_submap: a subset of the world's energy_map centered around
-    # 'position' with the given radius.
-    # submap_origin: the coordinates of bottome_left position of energy_submap.
-    # map_origin: a tuple with the origin of 'energy_submap'.
-    # Note: Central 'position' is signalled OFF_BOARD.
-
-    x0, y0 = position
-
-    # Obtain 'legal' subrectangle [world_x0, world_x1] x [world_y0, world_y1].
-    submap_x0 = max(0, x0 - radius)
-    submap_x1 = min(x0 + radius, world.width - 1)
-    submap_y0 = max(0, y0 - radius)
-    submap_y1 = min(y0 + radius, world.height - 1)
-    # Get 'submap_origin'
-    submap_origin = [submap_x0, submap_y0]
-
-    # Copy subrectangle on energy_submap.
-    energy_submap = np.copy(world.energy_map[submap_x0:submap_x1+1, submap_y0:submap_y1+1])
-
-    # Mark central position as OFF_BOARD.
-    x0_submap = x0 - submap_x0
-    y0_submap = y0 - submap_y0
-    energy_submap[x0_submap, y0_submap] = OFF_BOARD
-
-    return energy_submap, submap_origin
-
-
-def obtain_best_bite(world, position, radius=1):
-    # Return a tuple with the move taking to the tile with highest energy
-    # within some given 'radius' around 'position'.
-
-    # Obtain submap around postion ant tuple with its origin.
-    energy_submap, submap_origin = get_energy_submap(world, position, radius)
-
-    # Obtain tuple with relative postion of highest value in submap.
-    biggest = unravel_index(
-        energy_submap.argmax(),
-        energy_submap.shape)
-
-    if energy_submap[biggest[0], biggest[1]] > 0:
-        # Generate tuple leading to highest value.
+        # Get any bite in the list.   
+        bite_position = bites_list[random.randint(0, len(bites_list) - 1)]
+        # Generate tuple leading to the bite chosen.
         best_bite_delta = np.array([
-            submap_origin[0] + biggest[0] - position[0],
-            submap_origin[1] + biggest[1] - position[1]
-        ])
-
+            submap_origin[0] + bite_position[0] - position[0],
+            submap_origin[1] + bite_position[1] - position[1]
+            ])
     else:
         # Handle void result.
         best_bite_delta = None
@@ -149,7 +74,142 @@ def obtain_best_bite(world, position, radius=1):
     return best_bite_delta
 
 
-###############################################################
+def obtain_move(occupation_bitmap, position, radius=1):
+    # Return a delta from the given position leading to an unoccupied
+    # position within the radius given, or 'None' if none is found.
+
+    # Obtain submap around position ant tuple with its origin.
+    occupation_submap, submap_origin = copy_submap(
+        occupation_bitmap,
+        position,
+        radius)
+
+    # Obtain relative position of all UNOCCUPIED positions in submap.
+    moves_list = np.argwhere(occupation_submap == 1)  # TODO: use UNOCCUPIED_TILE.
+
+    if len(moves_list > 0):
+        # Some move(s) found: pick a random one.
+        move_position = moves_list[random.randint(0, len(moves_list) - 1)]
+
+        # Generate tuple leading to the move chosen.
+        move = np.array([
+            submap_origin[0] + move_position[0] - position[0],
+            submap_origin[1] + move_position[1] - position[1]
+            ])
+    else:
+        # Handle void result.
+        move = None
+
+    return move
+
+
+def obtain_best_escape(touch_map, max_loss_position):
+    # Return a delta with the move best escaping from a 'bite', i.e.
+    # an energy loss represented as negative in touch_map.
+    # If no bites are found, None is returned.
+
+    best_escape = None
+
+    # Obtain a submap of distances from max_loss_position around agent.
+    distance_submap_origin_x, distance_submap_origin_y = \
+        DISTANCE_MAP_2_TILES_CENTER[0] - max_loss_position[0], \
+        DISTANCE_MAP_2_TILES_CENTER[1] - max_loss_position[1]
+
+    distance_submap = DISTANCE_MAP_2_TILES[
+        distance_submap_origin_x:distance_submap_origin_x + 2][
+        distance_submap_origin_y:distance_submap_origin_y + 2
+    ]
+
+    # Cancel unreachable positions (occupied or off-board).
+
+    # Obtain position with highest distance.
+
+    # Obtain xy_delta for 'move'.
+
+    return best_escape
+
+
+def copy_submap(map, position, radius=1):
+    # Return:
+    # submap: a subset copied from the given map centered around 'position'
+    # with the given radius.
+    # submap_origin: the coordinates of bottom_left position of submap.
+    # Note: Central 'position' is signalled OFF_BOARD.
+
+    x0, y0 = position
+    width, height = map.shape
+
+    # Obtain 'legal' subrectangle [submap_x0, submap_x1] x
+    # [submap_y0, submap_y1].
+    submap_x0 = max(0, x0 - radius)
+    submap_x1 = min(x0 + radius, width - 1)
+    submap_y0 = max(0, y0 - radius)
+    submap_y1 = min(y0 + radius, height - 1)
+    # Get 'submap_origin'.
+    submap_origin = [submap_x0, submap_y0]
+
+    # Copy subrectangle on submap.
+    submap = np.copy(
+        map[submap_x0:submap_x1+1, submap_y0:submap_y1+1]
+    )
+
+    # Mark central position as OFF_BOARD.
+    x0_submap = x0 - submap_x0
+    y0_submap = y0 - submap_y0
+    submap[x0_submap, y0_submap] = OFF_BOARD
+
+    return submap, submap_origin
+
+
+def copy_submap_mask(map, position, mask=None, radius=1):
+    # TODO: comment I/O.
+
+    x0, y0 = position
+    width, height = map.shape
+
+    # Obtain 'legal' subrectangle [submap_x0, submap_x1] x
+    # [submap_y0, submap_y1].
+    submap_x0 = max(0, x0 - radius)
+    submap_x1 = min(x0 + radius, width - 1)
+    submap_y0 = max(0, y0 - radius)
+    submap_y1 = min(y0 + radius, height - 1)
+    # Copy subrectangle on submap.
+    submap = np.copy(
+        map[submap_x0:submap_x1+1, submap_y0:submap_y1+1]
+    )
+    # Get 'submap_origin' and 'submap_center'.
+    submap_origin = [submap_x0, submap_y0]
+    submap_center = [x0 - submap_x0, y0 - submap_y0]
+
+
+def crop_submap(big_map, big_map_center, small_map, small_map_center):
+    # Obtain a copy of the submap of 'big_map' on the same center
+    # and with the same shape as small_map.
+
+    big_map_width, big_map_height = big_map.shape
+    small_map_width, small_map_height = small_map.shape
+
+    # Obtain subrectangle [submap_x0, submap_x1] x
+    # [submap_y0, submap_y1].
+    submap_x0 = big_map_center[0] - small_map_center[0]
+    submap_x1 = big_map_center[0] + (small_map_width - 1 - small_map_center[0])
+    submap_y0 = big_map_center[1] - small_map_center[1]
+    submap_y1 = big_map_center[1] + (small_map_height - 1 - small_map_center[1])
+
+    # Check consistency of arguments.
+    assert \
+        0 <= submap_x0 <= submap_x1 <= big_map_width and \
+        0 <= submap_y0 <= submap_y1 <= big_map_height, \
+        "Inconsistent arguments passed to crop_submap()"
+
+    # Copy subrectangle on submap.
+    submap = np.copy(
+        map[submap_x0:submap_x1+1, submap_y0:submap_y1+1]
+    )
+
+    return submap
+
+###############################################################################
 # Minds: Perception
 #
 # A 'perception' function extracts from the world and the agent itself
@@ -164,12 +224,13 @@ def obtain_best_bite(world, position, radius=1):
 #       - state,  information in the shape the agent will be able to process.
 #         NOTE: This implies that "perception"'s output state must match
 #         "action"'s input state.
+###############################################################################
 
 
 def no_info(agent, world=None):
     # Void perception function, the agent receives no information about world
     # or itself. This is useful for passive agents not actually doing anything,
-    # e.g. some object or piece of food.
+    # e.g. some object or energy source.
 
     return None
 
@@ -177,13 +238,17 @@ def no_info(agent, world=None):
 def full_info(agent, world=None):
     # Full perception and access to agent and world is granted.
     # This is useful to program 'hard-coded' AIs which directly access
-    # all current available information.
+    # all currently available information.
+    #
+    # Limitation: Learning can't be based on the returned state because
+    # it's not a static copy of data.
+
     state = (agent, world)  # A tuple with both references.
 
     return state
 
 
-###############################################################
+###############################################################################
 # Minds: Action
 #
 # An 'action' function ('policy' in RL) selects an action at each step
@@ -191,21 +256,23 @@ def full_info(agent, world=None):
 #
 # - Input:
 #       - agent, the agent itself, for introspection of its state
-#       - world [used to query about empty tiles, etc.]. TODO: Eliminate need for 'world' arg.
+#       - world [used to query about empty tiles, etc.].
+#         TODO: Eliminate need for 'world' arg.
 #       - state, the current state of the agent.
 #
 # - Output: the action chosen, as a list:
-#       - action_type, e.g. MOVE, FEED, NONE.
+#       - action_type, e.g. act.MOVE, act.FEED, act.NONE.
 #       - action_arguments, e.g. [-1, 1], [].
 #       - action_energy_ratio, the cost invested in the action,
 #         as a multiplier of agent.move_cost, e.g. 1.0, 0.0, 4.0.
+###############################################################################
 
 def passive(state=None):
     # Void action function, the agent does not interact with the world.
     # This is useful for passive agents not actually doing anything,
     # e.g. some object or piece of food.
 
-    return ai.VOID_ACTION
+    return act.VOID_ACTION
 
 
 def wanderer(state):
@@ -227,51 +294,79 @@ def wanderer(state):
     else:
         if random.uniform(0, 1) <= stopping_prob:
             # NONE: Stop for a while.
-            action = VOID_ACTION
+            action = act.VOID_ACTION
         else:
             # EAT: Check for close agents.
-            possible_bites = obtain_possible_bites(world, agent.position, ACTIONS_DEF[EAT].arguments)
-            if random.uniform(0, 1) <= biting_prob and len(possible_bites) > 0:
-                # Choose a random bite.
-                xy_delta = possible_bites[random.randint(0, len(possible_bites) - 1)]
-                action = [EAT, xy_delta, ACTIONS_DEF[EAT].energy_ratio]
+            xy_delta = obtain_bite(
+                world.energy_map,
+                agent.position,
+                act.ACTIONS_DEF[act.EAT].radius
+                )
+            if random.uniform(0, 1) <= biting_prob and xy_delta is not None:
+                # Some bite is possible.
+                action = [act.EAT, xy_delta]
             else:
                 # MOVE: Choose a random legal move.
-                possible_moves = obtain_possible_moves(world, agent.position, ACTIONS_DEF[MOVE].arguments)
-                if len(possible_moves) == 0:
-                    action = VOID_ACTION
+                xy_delta = obtain_move(
+                    world.occupation_bitmap,
+                    agent.position,
+                    act.ACTIONS_DEF[act.MOVE].radius
+                    )
+                if xy_delta is not None:
+                    action = [act.MOVE, xy_delta]
                 else:
-                    xy_delta = possible_moves[random.randint(0, len(possible_moves) - 1)]
-                    action = [MOVE, xy_delta, ACTIONS_DEF[MOVE].energy_ratio]
+                    action = act.VOID_ACTION
 
     return action
 
 
 def wanderer2(state):
-    # A hard-coded AI modelling these basic behaviours:
-    # - If hungry, try  best bite (highest energy) around.
-    # - Otherwise, act as a regular 'wanderer'.
+    # A hard-coded AI modelling these basic behaviourial priorities:
+    # 1. If just hurt (energy loss), escape from offending tile.
+    # 2. If hungry, try  best bite (highest energy) around.
+    # 3. Otherwise, act as a regular 'wanderer'.
 
     agent, world = state  # Extract both complete objects.
 
+    loss_threshold = agent.step_cost  # Arbitrary, relative to agent.
     hunger_threshold = 0.5  # Energy ratio below which eating is prioritary.
 
-    # Default action is to rest.
-    action = VOID_ACTION
+    # 0. Default action is to rest.
+    action = act.VOID_ACTION
 
-    # Check for hunger first.
-    if agent.energy / agent.max_energy < hunger_threshold:
-        # Hungry: try best bite.
-        best_bite_delta = obtain_best_bite(world, agent.position, ACTIONS_DEF[EAT].radius)
-        if best_bite_delta is not None:
-            action = [EAT, best_bite_delta, ACTIONS_DEF[EAT].energy_ratio]
+    # 1. Check for pain first.
+    if action == act.VOID_ACTION:
+        max_loss_position = unravel_index(
+            agent.touch_map.argmin(),
+            agent.touch_map.shape)
+        loss_just_suffered = agent.touch_map[max_loss_position]
+        if loss_just_suffered <= loss_threshold:  # (Negative amounts.)
+            # Pain detected: try to escape.
+            best_move_delta = obtain_best_escape(
+                agent.touch_map,
+                max_loss_position)
+            if best_move_delta is not None:
+                action = [act.MOVE, best_move_delta]
 
-    if action == VOID_ACTION:
+    # 2. Check for hunger.
+    if action == act.VOID_ACTION:
+        if agent.energy / agent.max_energy < hunger_threshold:
+            # Hungry: try best bite.
+            best_move_delta = obtain_bite(
+                world.energy_map,
+                agent.position,
+                act.ACTIONS_DEF[act.EAT].radius,
+                highest=True)
+            if best_move_delta is not None:
+                action = [act.EAT, best_move_delta]
+
+    # 3. Act as a regular 'wanderer'.
+    if action == act.VOID_ACTION:
         action = wanderer(state)
 
     return action
 
-###############################################################
+###############################################################################
 # Minds: Learning
 #
 # A 'learning' function updates the policy of the agent
@@ -285,6 +380,7 @@ def wanderer2(state):
 # - Output:
 #       - result: some quantification of the learning performed,
 #         (bound to the learning algorithm).
+###############################################################################
 
 
 def no_learning(state, action, reward):
