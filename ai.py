@@ -17,13 +17,13 @@ import act
 OFF_BOARD = -1000000  # Value signalling an "illegal" out-of-the-board tile.
 
 # Precalculated maps:
-DISTANCE_MAP_2_TILES = [
+DISTANCE_MAP_2_TILES = np.array([
     [2, 2, 2, 2, 2],
     [2, 1, 1, 1, 2],
     [2, 1, 0, 1, 2],
     [2, 1, 1, 1, 2],
     [2, 2, 2, 2, 2]
-]
+])
 DISTANCE_MAP_2_TILES_CENTER = [2, 2]
 
 NO_PERCEPTION = None
@@ -103,28 +103,53 @@ def obtain_move(occupation_bitmap, position, radius=1):
     return move
 
 
-def obtain_best_escape(touch_map, max_loss_position):
+def obtain_best_escape(occupation_bitmap, position,
+                       touch_map, max_loss_position, radius=1):
     # Return a delta with the move best escaping from a 'bite', i.e.
     # an energy loss represented as negative in touch_map.
-    # If no bites are found, None is returned.
+    # If no 'bites' are found, None is returned.
 
+    touch_map_center = [1, 1]  # Coords. of agent in touch_map.
     best_escape = None
 
-    # Obtain a submap of distances from max_loss_position around agent.
-    distance_submap_origin_x, distance_submap_origin_y = \
-        DISTANCE_MAP_2_TILES_CENTER[0] - max_loss_position[0], \
-        DISTANCE_MAP_2_TILES_CENTER[1] - max_loss_position[1]
+    # Obtain submap of occupation around position.
+    occupation_submap, submap_center = overlap_maps(
+        occupation_bitmap,
+        position,
+        touch_map,
+        touch_map_center)
 
-    distance_submap = DISTANCE_MAP_2_TILES[
-        distance_submap_origin_x:distance_submap_origin_x + 2][
-        distance_submap_origin_y:distance_submap_origin_y + 2
+    # Obtain submap of distances around _corrected_ max_loss_position.
+    shift_x = submap_center[0] - touch_map_center[0]
+    shift_y = submap_center[1] - touch_map_center[1]
+    corrected_max_loss_position = [
+        max_loss_position[0] + shift_x,
+        max_loss_position[1] + shift_y
     ]
 
-    # Cancel unreachable positions (occupied or off-board).
+    distances_submap, distances_submap_center = overlap_maps(
+        DISTANCE_MAP_2_TILES,
+        DISTANCE_MAP_2_TILES_CENTER,
+        occupation_submap,
+        corrected_max_loss_position
+    )
 
-    # Obtain position with highest distance.
+    # Cancel unreachable positions (occupied or off-board).
+    legal_distances_submap = np.multiply(
+        distances_submap, occupation_submap  # Occupied tiles are 0.
+    )
+
+    # Obtain position with largest distance.
+    max_distance_position = unravel_index(
+        legal_distances_submap.argmax(),
+        legal_distances_submap.shape
+    )
 
     # Obtain xy_delta for 'move'.
+    best_escape = np.array([
+        max_distance_position[0] - submap_center[0],
+        max_distance_position[1] - submap_center[1]
+    ])
 
     return best_escape
 
@@ -161,53 +186,40 @@ def copy_submap(map, position, radius=1):
     return submap, submap_origin
 
 
-def copy_submap_mask(map, position, mask=None, radius=1):
-    # TODO: comment I/O.
-
-    x0, y0 = position
-    width, height = map.shape
-
-    # Obtain 'legal' subrectangle [submap_x0, submap_x1] x
-    # [submap_y0, submap_y1].
-    submap_x0 = max(0, x0 - radius)
-    submap_x1 = min(x0 + radius, width - 1)
-    submap_y0 = max(0, y0 - radius)
-    submap_y1 = min(y0 + radius, height - 1)
-    # Copy subrectangle on submap.
-    submap = np.copy(
-        map[submap_x0:submap_x1+1, submap_y0:submap_y1+1]
-    )
-    # Get 'submap_origin' and 'submap_center'.
-    submap_origin = [submap_x0, submap_y0]
-    submap_center = [x0 - submap_x0, y0 - submap_y0]
-
-
-def crop_submap(big_map, big_map_center, small_map, small_map_center):
-    # Obtain a copy of the submap of 'big_map' on the same center
-    # and with the same shape as small_map.
+def overlap_maps(big_map, big_map_center, small_map, small_map_center):
+    # Obtain a copy of the area within big_map overlapped by small_map,
+    # matching their respective centers.
+    # Return the copy and its center.
 
     big_map_width, big_map_height = big_map.shape
     small_map_width, small_map_height = small_map.shape
 
     # Obtain subrectangle [submap_x0, submap_x1] x
     # [submap_y0, submap_y1].
-    submap_x0 = big_map_center[0] - small_map_center[0]
-    submap_x1 = big_map_center[0] + (small_map_width - 1 - small_map_center[0])
-    submap_y0 = big_map_center[1] - small_map_center[1]
-    submap_y1 = big_map_center[1] + (small_map_height - 1 - small_map_center[1])
-
-    # Check consistency of arguments.
-    assert \
-        0 <= submap_x0 <= submap_x1 <= big_map_width and \
-        0 <= submap_y0 <= submap_y1 <= big_map_height, \
-        "Inconsistent arguments passed to crop_submap()"
+    submap_x0 = max(
+        0,
+        big_map_center[0] - small_map_center[0])
+    submap_x1 = min(
+        big_map_width - 1,
+        big_map_center[0] + (small_map_width - 1 - small_map_center[0]))
+    submap_y0 = max(
+        0,
+        big_map_center[1] - small_map_center[1])
+    submap_y1 = min(
+        big_map_height - 1,
+        big_map_center[1] + (small_map_height - 1 - small_map_center[1]))
 
     # Copy subrectangle on submap.
     submap = np.copy(
-        map[submap_x0:submap_x1+1, submap_y0:submap_y1+1]
+        big_map[submap_x0:submap_x1+1, submap_y0:submap_y1+1]
     )
+    # Calculate submap's center.
+    submap_center = [
+        big_map_center[0] - submap_x0,
+        big_map_center[1] - submap_y0
+    ]
 
-    return submap
+    return submap, submap_center
 
 ###############################################################################
 # Minds: Perception
@@ -343,6 +355,8 @@ def wanderer2(state):
         if loss_just_suffered <= loss_threshold:  # (Negative amounts.)
             # Pain detected: try to escape.
             best_move_delta = obtain_best_escape(
+                world.occupation_bitmap,
+                agent.position,
                 agent.touch_map,
                 max_loss_position)
             if best_move_delta is not None:
