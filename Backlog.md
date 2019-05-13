@@ -4,12 +4,6 @@
 
 1.0:
 
-* Refine AI for 'wanderer':
-  * Escape from attacks:
-    * Prioritize moving over feeding/no-action.
-    * Choose best direction?
-  * Prevent 2 hungry wanderers from coupling for good.
-
 * Create AI for 'hunter':
   * Not to miss adjacent food... ever!
   * Choose highest-energy adjacent target for food.
@@ -113,6 +107,12 @@ Future:
 
 AI:
 
+* Implement new AI: 'wanderer2', refinement on 'wanderer':
+  * Escape from attacks:
+    * Prioritize moving over feeding/no-action.
+    * Choose best direction.
+    * Otherwise, act as wanderer.
+  * Prevent 2 hungry wanderers from coupling for good.
 * Implement a basic random AI (e.g. random moves / still, with RND inertia).
 * Refine AI for 'wanderer':
   * Not to miss adjacent food when energy starts to be low.

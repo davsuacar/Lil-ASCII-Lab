@@ -236,15 +236,17 @@ class Agent(Thing):
         self.steps = 0
         self.current_state = None
         self.current_energy_delta = 0
-        self.touch_map = np.zeros([3, 3])
+        self.negative_touch_map = np.zeros([3, 3])
+        self.positive_touch_map = np.zeros([3, 3])
         self.chosen_action = act.VOID_ACTION
         self.chosen_action_success = True
         self.action_icon = ""
         self.learn_result = None
 
-    def reset_touch_map(self):
+    def reset_touch_maps(self):
         # Set all surrounding tiles to 0.
-        self.touch_map[:] = 0
+        self.negative_touch_map[:] = 0
+        self.positive_touch_map[:] = 0
 
     def pre_step(self):
         # Reset agents' step variables before a step is run.
@@ -252,7 +254,7 @@ class Agent(Thing):
 
     def update_energy(self, energy_delta, delta_source_position=None):
         # Handle 'energy' updates, including 'recycling' cases.
-        # Updates 'touch_map' at 'energy_source_position':
+        # Updates 'touch_maps' at 'energy_source_position':
         #   - energy change passed is allocated to the source position passed.
         #   - when no source position is passed, local position is assumed,
         #     i.e. (1, 1) which is the center of the map.
@@ -263,7 +265,8 @@ class Agent(Thing):
             # No change to agent's energy despite the energy_delta.
             self.current_energy_delta = 0
             energy_used = energy_delta
-            # No need to update self.touch_map.
+            # No need to update self.negative_touch_map
+            # or self.positive_touch_map.
         else:
             # ENERGY:
             # Keep within 0 and agent's max_energy.
@@ -271,10 +274,14 @@ class Agent(Thing):
             self.energy = max(min(self.energy + energy_delta, self.max_energy), 0)
             energy_used = self.energy - prev_energy  # Actual impact on agent.
             self.current_energy_delta += energy_used
-            # Update 'touch_map'.
+            # Update 'touch_maps'.
             if delta_source_position is None:
                 delta_source_position = self.position
-            self.touch_map[
+            if energy_used < 0:
+                touch_map = self.negative_touch_map
+            else:
+                touch_map = self.positive_touch_map
+            touch_map[
                 1 + delta_source_position[0] - self.position[0],
                 1 + delta_source_position[1] - self.position[1]
             ] += energy_used
@@ -300,7 +307,7 @@ class Agent(Thing):
 
         # Update internal variables, aspect, etc.
         self.chosen_action_success = success
-        self.reset_touch_map()
+        self.reset_touch_maps()
 
         # UI: Capture action's icon, if any.
         action = self.chosen_action[1].tolist()

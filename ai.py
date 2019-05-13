@@ -104,7 +104,7 @@ def obtain_move(occupation_bitmap, position, radius=1):
 
 
 def obtain_best_escape(occupation_bitmap, position,
-                       touch_map, max_loss_position, radius=1):
+                       negative_touch_map, max_loss_position, radius=1):
     # Return a delta with the move best escaping from a 'bite', i.e.
     # an energy loss represented as negative in touch_map.
     # If no 'bites' are found, None is returned.
@@ -116,7 +116,7 @@ def obtain_best_escape(occupation_bitmap, position,
     occupation_submap, submap_center = overlap_maps(
         occupation_bitmap,
         position,
-        touch_map,
+        negative_touch_map,
         touch_map_center)
 
     # Obtain submap of distances around _corrected_ max_loss_position.
@@ -349,15 +349,15 @@ def wanderer2(state):
     # 1. Check for pain first.
     if action == act.VOID_ACTION:
         max_loss_position = unravel_index(
-            agent.touch_map.argmin(),
-            agent.touch_map.shape)
-        loss_just_suffered = agent.touch_map[max_loss_position]
+            agent.negative_touch_map.argmin(),
+            agent.negative_touch_map.shape)
+        loss_just_suffered = agent.negative_touch_map[max_loss_position]
         if loss_just_suffered <= loss_threshold:  # (Negative amounts.)
             # Pain detected: try to escape.
             best_move_delta = obtain_best_escape(
                 world.occupation_bitmap,
                 agent.position,
-                agent.touch_map,
+                agent.negative_touch_map,
                 max_loss_position)
             if best_move_delta is not None:
                 action = [act.MOVE, best_move_delta]
